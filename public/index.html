@@ -117,7 +117,7 @@
       <!-- Normal display -->
       <div x-show="!renaming && !confirmDelete" class="flex items-center gap-1 group">
         <h1 class="text-2xl font-bold tracking-tight flex-1 min-w-0 truncate" x-text="currentList?.name"></h1>
-        <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <div class="flex items-center gap-0.5 shrink-0">
           <button @click="startRename()" title="Rename" class="p-1.5 rounded-lg text-gray-400 hover:text-brand hover:bg-gray-100 transition-colors">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           </button>
@@ -185,7 +185,30 @@
             <p class="text-xs text-gray-400" x-text="group.count === 1 ? 'event' : 'events'"></p>
           </div>
           <div class="border-t border-gray-100 divide-y divide-gray-100">
-            <template x-for="t in group.times" :key="t">
+            <!-- Hour aggregates for entries older than the last 3 -->
+            <template x-for="hg in hourGroups(group)" :key="hg.hour">
+              <div>
+                <button
+                  @click="toggleHour(group.day + '-' + hg.hour)"
+                  class="w-full px-4 py-1.5 flex items-center justify-between hover:bg-cream-dk transition-colors"
+                >
+                  <span class="text-sm tabular-nums text-gray-400 font-medium" x-text="hg.hour + ':xx'"></span>
+                  <span class="flex items-center gap-1.5 text-xs text-gray-400">
+                    <span x-text="hg.times.length + (hg.times.length === 1 ? ' entry' : ' entries')"></span>
+                    <span x-text="expandedHours[group.day + '-' + hg.hour] ? '▴' : '▾'"></span>
+                  </span>
+                </button>
+                <template x-if="expandedHours[group.day + '-' + hg.hour]">
+                  <div class="border-t border-gray-100 divide-y divide-gray-100 bg-cream">
+                    <template x-for="t in hg.times" :key="t">
+                      <p class="px-6 py-1.5 text-sm tabular-nums text-gray-400" x-text="t"></p>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </template>
+            <!-- Last 3 (or all, if ≤ 3) shown individually -->
+            <template x-for="t in detailTimes(group)" :key="t">
               <p class="px-4 py-1.5 text-sm tabular-nums text-gray-500" x-text="t"></p>
             </template>
           </div>
@@ -209,6 +232,7 @@
         renaming: false,
         renameValue: '',
         confirmDelete: false,
+        expandedHours: {},
 
         async init() {
           await this.loadLists();
@@ -292,6 +316,25 @@
         async goHome() {
           this.page = 'home';
           await this.loadLists();
+        },
+
+        hourGroups(group) {
+          if (group.times.length <= 3) return [];
+          const older = group.times.slice(0, -3);
+          const map = {};
+          for (const t of older) {
+            const h = t.slice(0, 2);
+            (map[h] ??= []).push(t);
+          }
+          return Object.entries(map).map(([hour, times]) => ({ hour, times }));
+        },
+
+        detailTimes(group) {
+          return group.times.length <= 3 ? group.times : group.times.slice(-3);
+        },
+
+        toggleHour(key) {
+          this.expandedHours[key] = !this.expandedHours[key];
         },
 
         formatDay(day) {
