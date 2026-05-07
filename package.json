@@ -2,6 +2,11 @@
   "name": "trackr",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch --watch-path=src --watch-path=public src/index.js",
+    "test": "node --env-file=test/.env --test test/lists.test.js test/events.test.js"
+  },
   "engines": { "node": ">=22.5.0" },
   "dependencies": {
     "express": "^4.19.2"

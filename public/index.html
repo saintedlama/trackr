@@ -18,13 +18,31 @@
         <p class="px-4 py-6 text-center text-sm text-gray-400">No lists yet.</p>
       </template>
       <template x-for="list in lists" :key="list.id">
-        <button
-          @click="openList(list.id)"
-          class="w-full text-left px-4 py-3.5 font-medium hover:bg-gray-50 transition-colors flex items-center justify-between group"
-        >
-          <span x-text="list.name"></span>
-          <span class="text-gray-300 group-hover:text-gray-400 transition-colors">→</span>
-        </button>
+        <div class="flex items-center hover:bg-gray-50 transition-colors group">
+          <button
+            @click="openList(list.id)"
+            class="flex-1 text-left px-4 py-3.5 font-medium flex items-center gap-1.5"
+          >
+            <span x-text="list.name"></span>
+            <span class="text-gray-300 group-hover:text-gray-400 transition-colors text-sm">→</span>
+          </button>
+          <div class="pr-3 pl-1 flex items-center gap-2 shrink-0">
+            <span
+              x-show="flashedListId === list.id"
+              x-transition:enter="transition ease-out duration-150"
+              x-transition:enter-start="opacity-0"
+              x-transition:enter-end="opacity-100"
+              x-transition:leave="transition ease-in duration-300"
+              x-transition:leave-start="opacity-100"
+              x-transition:leave-end="opacity-0"
+              class="text-xs text-gray-400"
+            >Tracked!</span>
+            <button
+              @click.stop="quickTrack(list.id)"
+              class="px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg hover:bg-gray-700 active:scale-95 transition-all"
+            >Track</button>
+          </div>
+        </div>
       </template>
     </div>
 
@@ -126,6 +144,7 @@
         newListName: '',
         showNewList: false,
         flashed: false,
+        flashedListId: null,
         tracking: false,
 
         async init() {
@@ -161,6 +180,12 @@
         async loadEvents() {
           const res = await fetch(`/api/lists/${this.currentList.id}/events`);
           this.events = await res.json();
+        },
+
+        async quickTrack(listId) {
+          await fetch(`/api/lists/${listId}/events`, { method: 'POST' });
+          this.flashedListId = listId;
+          setTimeout(() => { this.flashedListId = null; }, 1200);
         },
 
         async track() {
