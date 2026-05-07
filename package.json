@@ -1,0 +1,9 @@
+{
+  "name": "trackr",
+  "version": "1.0.0",
+  "type": "module",
+  "engines": { "node": ">=22.5.0" },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

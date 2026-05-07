@@ -1,0 +1,14 @@
+services:
+  trackr:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - trackr-data:/data
+    environment:
+      DB_PATH: /data/trackr.db
+      PORT: 3000
+    restart: unless-stopped
+
+volumes:
+  trackr-data:

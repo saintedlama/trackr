@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>trackr</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-dvh text-gray-900" x-data="app()" x-init="init()">
+
+  <!-- Home view -->
+  <div x-show="page === 'home'" x-transition class="max-w-md mx-auto px-4 py-10">
+    <h1 class="text-2xl font-bold tracking-tight mb-6">trackr</h1>
+
+    <!-- List of lists -->
+    <div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 mb-4 overflow-hidden">
+      <template x-if="lists.length === 0">
+        <p class="px-4 py-6 text-center text-sm text-gray-400">No lists yet.</p>
+      </template>
+      <template x-for="list in lists" :key="list.id">
+        <button
+          @click="openList(list.id)"
+          class="w-full text-left px-4 py-3.5 font-medium hover:bg-gray-50 transition-colors flex items-center justify-between group"
+        >
+          <span x-text="list.name"></span>
+          <span class="text-gray-300 group-hover:text-gray-400 transition-colors">→</span>
+        </button>
+      </template>
+    </div>
+
+    <!-- New list -->
+    <div>
+      <button
+        x-show="!showNewList"
+        @click="showNewList = true; $nextTick(() => $refs.nameInput.focus())"
+        class="w-full py-2.5 rounded-xl border border-dashed border-gray-300 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors"
+      >
+        + New list
+      </button>
+
+      <form
+        x-show="showNewList"
+        x-transition
+        @submit.prevent="createList()"
+        class="flex gap-2"
+      >
+        <input
+          x-ref="nameInput"
+          x-model="newListName"
+          type="text"
+          placeholder="List name"
+          class="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+          @keydown.escape="showNewList = false; newListName = ''"
+        >
+        <button
+          type="submit"
+          :disabled="!newListName.trim()"
+          class="px-4 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl disabled:opacity-40 hover:bg-gray-700 transition-colors"
+        >
+          Create
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- List view -->
+  <div x-show="page === 'list'" x-transition class="max-w-md mx-auto px-4 py-10">
+    <div class="mb-6">
+      <button @click="goHome()" class="text-sm text-gray-400 hover:text-gray-600 transition-colors mb-1">← trackr</button>
+      <h1 class="text-2xl font-bold tracking-tight" x-text="currentList?.name"></h1>
+    </div>
+
+    <!-- Track button -->
+    <div class="mb-8">
+      <button
+        @click="track()"
+        :disabled="tracking"
+        class="w-full py-7 bg-gray-900 text-white text-xl font-bold rounded-2xl hover:bg-gray-700 active:scale-[0.98] transition-all disabled:opacity-50"
+      >
+        Track
+      </button>
+      <div class="h-6 mt-2 text-center">
+        <span
+          x-show="flashed"
+          x-transition:enter="transition ease-out duration-150"
+          x-transition:enter-start="opacity-0 scale-95"
+          x-transition:enter-end="opacity-100 scale-100"
+          x-transition:leave="transition ease-in duration-300"
+          x-transition:leave-start="opacity-100"
+          x-transition:leave-end="opacity-0"
+          class="text-sm font-medium text-gray-500"
+        >Tracked!</span>
+      </div>
+    </div>
+
+    <!-- Events by day -->
+    <div class="space-y-3">
+      <template x-if="events.length === 0">
+        <p class="text-center text-sm text-gray-400 py-4">No events yet. Hit Track!</p>
+      </template>
+
+      <template x-for="group in events" :key="group.day">
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div class="px-4 pt-3 pb-2">
+            <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-0.5" x-text="formatDay(group.day)"></p>
+            <p class="text-3xl font-bold tracking-tight" x-text="group.count"></p>
+            <p class="text-xs text-gray-400" x-text="group.count === 1 ? 'event' : 'events'"></p>
+          </div>
+          <div class="border-t border-gray-100 divide-y divide-gray-100">
+            <template x-for="t in group.times" :key="t">
+              <p class="px-4 py-1.5 text-sm tabular-nums text-gray-500" x-text="t"></p>
+            </template>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <script>
+    function app() {
+      return {
+        page: 'home',
+        lists: [],
+        currentList: null,
+        events: [],
+        newListName: '',
+        showNewList: false,
+        flashed: false,
+        tracking: false,
+
+        async init() {
+          await this.loadLists();
+        },
+
+        async loadLists() {
+          const res = await fetch('/api/lists');
+          this.lists = await res.json();
+        },
+
+        async createList() {
+          const name = this.newListName.trim();
+          if (!name) return;
+          const res = await fetch('/api/lists', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name }),
+          });
+          const list = await res.json();
+          this.newListName = '';
+          this.showNewList = false;
+          await this.openList(list.id);
+        },
+
+        async openList(id) {
+          const res = await fetch(`/api/lists/${id}`);
+          this.currentList = await res.json();
+          await this.loadEvents();
+          this.page = 'list';
+        },
+
+        async loadEvents() {
+          const res = await fetch(`/api/lists/${this.currentList.id}/events`);
+          this.events = await res.json();
+        },
+
+        async track() {
+          this.tracking = true;
+          try {
+            await fetch(`/api/lists/${this.currentList.id}/events`, { method: 'POST' });
+            await this.loadEvents();
+            this.flashed = true;
+            setTimeout(() => { this.flashed = false; }, 1200);
+          } finally {
+            this.tracking = false;
+          }
+        },
+
+        async goHome() {
+          this.page = 'home';
+          await this.loadLists();
+        },
+
+        formatDay(day) {
+          const today = new Date().toISOString().slice(0, 10);
+          const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+          if (day === today) return 'Today';
+          if (day === yesterday) return 'Yesterday';
+          return new Date(day + 'T12:00:00').toLocaleDateString(undefined, {
+            weekday: 'long', month: 'long', day: 'numeric',
+          });
+        },
+      };
+    }
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+</html>
