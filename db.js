@@ -7,7 +7,7 @@ db.exec(`
   PRAGMA journal_mode = WAL;
   PRAGMA foreign_keys = ON;
 
-  CREATE TABLE IF NOT EXISTS lists (
+  CREATE TABLE IF NOT EXISTS trackers (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     name       TEXT    NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -15,18 +15,18 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS events (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    list_id    INTEGER NOT NULL REFERENCES lists(id) ON DELETE CASCADE,
+    list_id    INTEGER NOT NULL REFERENCES trackers(id) ON DELETE CASCADE,
     tracked_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `);
 
 const stmts = {
-  getLists:      db.prepare('SELECT id, name FROM lists ORDER BY name ASC'),
-  getList:       db.prepare('SELECT id, name FROM lists WHERE id = ?'),
-  createList:    db.prepare('INSERT INTO lists (name) VALUES (?)'),
-  renameList:    db.prepare('UPDATE lists SET name = ? WHERE id = ?'),
-  deleteList:    db.prepare('DELETE FROM lists WHERE id = ?'),
-  createEvent:   db.prepare('INSERT INTO events (list_id) VALUES (?)'),
+  getTrackers:    db.prepare('SELECT id, name FROM trackers ORDER BY name ASC'),
+  getTracker:     db.prepare('SELECT id, name FROM trackers WHERE id = ?'),
+  createTracker:  db.prepare('INSERT INTO trackers (name) VALUES (?)'),
+  renameTracker:  db.prepare('UPDATE trackers SET name = ? WHERE id = ?'),
+  deleteTracker:  db.prepare('DELETE FROM trackers WHERE id = ?'),
+  createEvent:    db.prepare('INSERT INTO events (list_id) VALUES (?)'),
   getEventsByDay: db.prepare(`
     SELECT DATE(tracked_at) AS day,
            COUNT(*)         AS count,
@@ -38,33 +38,33 @@ const stmts = {
   `),
 };
 
-export function getLists() {
-  return stmts.getLists.all();
+export function getTrackers() {
+  return stmts.getTrackers.all();
 }
 
-export function getList(id) {
-  return stmts.getList.get(id) ?? null;
+export function getTracker(id) {
+  return stmts.getTracker.get(id) ?? null;
 }
 
-export function createList(name) {
-  const result = stmts.createList.run(name);
+export function createTracker(name) {
+  const result = stmts.createTracker.run(name);
   return result.lastInsertRowid;
 }
 
-export function renameList(id, name) {
-  stmts.renameList.run(name, id);
+export function renameTracker(id, name) {
+  stmts.renameTracker.run(name, id);
 }
 
-export function deleteList(id) {
-  stmts.deleteList.run(id);
+export function deleteTracker(id) {
+  stmts.deleteTracker.run(id);
 }
 
-export function createEvent(listId) {
-  stmts.createEvent.run(listId);
+export function createEvent(trackerId) {
+  stmts.createEvent.run(trackerId);
 }
 
-export function getEventsByDay(listId) {
-  return stmts.getEventsByDay.all(listId).map(row => ({
+export function getEventsByDay(trackerId) {
+  return stmts.getEventsByDay.all(trackerId).map(row => ({
     day: row.day,
     count: row.count,
     times: row.times ? row.times.split(',') : [],

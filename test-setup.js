@@ -34,10 +34,10 @@ export function useServer() {
   const patch = (path, data) => send('PATCH', path, data);
   const del   = (path)       => req(path, { method: 'DELETE' });
 
-  async function createList(name = `list-${Date.now()}`) {
-    const { body } = await post('/api/lists', { name });
+  async function createTracker(name = `tracker-${Date.now()}`) {
+    const { body } = await post('/api/trackers', { name });
     return body;
   }
 
-  return { req, post, patch, del, createList };
+  return { req, post, patch, del, createTracker };
 }

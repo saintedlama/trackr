@@ -39,23 +39,23 @@
       <img src="/trackr_logo.svg" alt="trackr" class="h-7">
     </h1>
 
-    <!-- List of lists -->
+    <!-- Tracker list -->
     <div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 mb-4 overflow-hidden">
-      <template x-if="lists.length === 0">
-        <p class="px-4 py-6 text-center text-sm text-gray-400">No lists yet.</p>
+      <template x-if="trackers.length === 0">
+        <p class="px-4 py-6 text-center text-sm text-gray-400">No trackers yet.</p>
       </template>
-      <template x-for="list in lists" :key="list.id">
+      <template x-for="tracker in trackers" :key="tracker.id">
         <div class="flex items-center hover:bg-cream-dk transition-colors group">
           <button
-            @click="openList(list.id)"
+            @click="openTracker(tracker.id)"
             class="flex-1 text-left px-4 py-3.5 font-medium flex items-center gap-1.5"
           >
-            <span x-text="list.name"></span>
+            <span x-text="tracker.name"></span>
             <span class="text-gray-300 group-hover:text-gray-400 transition-colors text-sm">→</span>
           </button>
           <div class="pr-3 pl-1 flex items-center gap-2 shrink-0">
             <span
-              x-show="flashedListId === list.id"
+              x-show="flashedTrackerId === tracker.id"
               x-transition:enter="transition ease-out duration-150"
               x-transition:enter-start="opacity-0"
               x-transition:enter-end="opacity-100"
@@ -65,7 +65,7 @@
               class="text-xs text-brand"
             >Tracked!</span>
             <button
-              @click.stop="quickTrack(list.id)"
+              @click.stop="quickTrack(tracker.id)"
               class="px-3 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand-dk active:scale-95 transition-all"
             >Track</button>
           </div>
@@ -73,34 +73,34 @@
       </template>
     </div>
 
-    <!-- New list -->
+    <!-- New tracker -->
     <div>
       <button
-        x-show="!showNewList"
-        @click="showNewList = true; $nextTick(() => $refs.nameInput.focus())"
+        x-show="!showNewTracker"
+        @click="showNewTracker = true; $nextTick(() => $refs.nameInput.focus())"
         class="w-full py-2.5 rounded-xl border border-dashed border-gray-300 text-sm text-gray-500 hover:border-brand hover:text-brand transition-colors"
       >
-        + New list
+        + New tracker
       </button>
 
       <form
-        x-show="showNewList"
+        x-show="showNewTracker"
         x-transition
-        @submit.prevent="createList()"
+        @submit.prevent="createTracker()"
         class="flex gap-2"
       >
         <input
           x-ref="nameInput"
-          x-model="newListName"
+          x-model="newTrackerName"
           type="text"
-          placeholder="List name"
+          placeholder="Tracker name"
           maxlength="40"
           class="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
-          @keydown.escape="showNewList = false; newListName = ''"
+          @keydown.escape="showNewTracker = false; newTrackerName = ''"
         >
         <button
           type="submit"
-          :disabled="!newListName.trim()"
+          :disabled="!newTrackerName.trim()"
           class="px-4 py-2.5 bg-brand text-white text-sm font-semibold rounded-xl disabled:opacity-40 hover:bg-brand-dk transition-colors"
         >
           Create
@@ -109,14 +109,14 @@
     </div>
   </div>
 
-  <!-- List view -->
-  <div x-show="page === 'list'" x-transition class="max-w-md mx-auto px-4 py-10">
+  <!-- Tracker view -->
+  <div x-show="page === 'tracker'" x-transition class="max-w-md mx-auto px-4 py-10">
     <div class="mb-6">
       <button @click="goHome()" class="text-sm text-gray-400 hover:text-brand transition-colors mb-3">← trackr</button>
 
       <!-- Normal display -->
       <div x-show="!renaming && !confirmDelete" class="flex items-center gap-1 group">
-        <h1 class="text-2xl font-bold tracking-tight flex-1 min-w-0 truncate" x-text="currentList?.name"></h1>
+        <h1 class="text-2xl font-bold tracking-tight flex-1 min-w-0 truncate" x-text="currentTracker?.name"></h1>
         <div class="flex items-center gap-0.5 shrink-0">
           <button @click="startRename()" title="Rename" class="p-1.5 rounded-lg text-gray-400 hover:text-brand hover:bg-gray-100 transition-colors">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
@@ -129,8 +129,8 @@
 
       <!-- Delete confirm -->
       <div x-show="confirmDelete" class="flex items-center gap-2">
-        <span class="text-lg font-bold tracking-tight text-gray-400 flex-1 min-w-0 truncate">Delete "<span x-text="currentList?.name"></span>"?</span>
-        <button @click="deleteList()" class="px-3 py-1.5 bg-red-500 text-white text-xs font-semibold rounded-lg hover:bg-red-600 transition-colors">Delete</button>
+        <span class="text-lg font-bold tracking-tight text-gray-400 flex-1 min-w-0 truncate">Delete "<span x-text="currentTracker?.name"></span>"?</span>
+        <button @click="deleteTracker()" class="px-3 py-1.5 bg-red-500 text-white text-xs font-semibold rounded-lg hover:bg-red-600 transition-colors">Delete</button>
         <button @click="confirmDelete = false" class="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">Cancel</button>
       </div>
 
@@ -221,13 +221,13 @@
     function app() {
       return {
         page: 'home',
-        lists: [],
-        currentList: null,
+        trackers: [],
+        currentTracker: null,
         events: [],
-        newListName: '',
-        showNewList: false,
+        newTrackerName: '',
+        showNewTracker: false,
         flashed: false,
-        flashedListId: null,
+        flashedTrackerId: null,
         tracking: false,
         renaming: false,
         renameValue: '',
@@ -235,40 +235,40 @@
         expandedHours: {},
 
         async init() {
-          await this.loadLists();
+          await this.loadTrackers();
         },
 
-        async loadLists() {
-          const res = await fetch('/api/lists');
-          this.lists = await res.json();
+        async loadTrackers() {
+          const res = await fetch('/api/trackers');
+          this.trackers = await res.json();
         },
 
-        async createList() {
-          const name = this.newListName.trim();
+        async createTracker() {
+          const name = this.newTrackerName.trim();
           if (!name) return;
-          const res = await fetch('/api/lists', {
+          const res = await fetch('/api/trackers', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name }),
           });
-          const list = await res.json();
-          this.newListName = '';
-          this.showNewList = false;
-          await this.openList(list.id);
+          const tracker = await res.json();
+          this.newTrackerName = '';
+          this.showNewTracker = false;
+          await this.openTracker(tracker.id);
         },
 
-        async openList(id) {
-          const res = await fetch(`/api/lists/${id}`);
-          this.currentList = await res.json();
+        async openTracker(id) {
+          const res = await fetch(`/api/trackers/${id}`);
+          this.currentTracker = await res.json();
           await this.loadEvents();
           this.renaming = false;
           this.confirmDelete = false;
-          this.page = 'list';
+          this.page = 'tracker';
         },
 
         startRename() {
           this.confirmDelete = false;
-          this.renameValue = this.currentList.name;
+          this.renameValue = this.currentTracker.name;
           this.renaming = true;
           this.$nextTick(() => this.$refs.renameInput.focus());
         },
@@ -276,35 +276,35 @@
         async saveRename() {
           const name = this.renameValue.trim();
           if (!name) return;
-          await fetch(`/api/lists/${this.currentList.id}`, {
+          await fetch(`/api/trackers/${this.currentTracker.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name }),
           });
-          this.currentList = { ...this.currentList, name };
+          this.currentTracker = { ...this.currentTracker, name };
           this.renaming = false;
         },
 
-        async deleteList() {
-          await fetch(`/api/lists/${this.currentList.id}`, { method: 'DELETE' });
+        async deleteTracker() {
+          await fetch(`/api/trackers/${this.currentTracker.id}`, { method: 'DELETE' });
           await this.goHome();
         },
 
         async loadEvents() {
-          const res = await fetch(`/api/lists/${this.currentList.id}/events`);
+          const res = await fetch(`/api/trackers/${this.currentTracker.id}/events`);
           this.events = await res.json();
         },
 
-        async quickTrack(listId) {
-          await fetch(`/api/lists/${listId}/events`, { method: 'POST' });
-          this.flashedListId = listId;
-          setTimeout(() => { this.flashedListId = null; }, 1200);
+        async quickTrack(trackerId) {
+          await fetch(`/api/trackers/${trackerId}/events`, { method: 'POST' });
+          this.flashedTrackerId = trackerId;
+          setTimeout(() => { this.flashedTrackerId = null; }, 1200);
         },
 
         async track() {
           this.tracking = true;
           try {
-            await fetch(`/api/lists/${this.currentList.id}/events`, { method: 'POST' });
+            await fetch(`/api/trackers/${this.currentTracker.id}/events`, { method: 'POST' });
             await this.loadEvents();
             this.flashed = true;
             setTimeout(() => { this.flashed = false; }, 1200);
@@ -315,7 +315,7 @@
 
         async goHome() {
           this.page = 'home';
-          await this.loadLists();
+          await this.loadTrackers();
         },
 
         hourGroups(group) {
