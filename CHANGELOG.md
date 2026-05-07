@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/saintedlama/trackr/compare/v1.0.0...v1.0.1) (2026-05-07)
+
+
+### Bug Fixes
+
+* update dockerfile to 25 ([74e193f](https://github.com/saintedlama/trackr/commit/74e193f8f95e76993c75a52b8a61fe1764620fd5))
+
 ## 1.0.0 (2026-05-07)
 
 
