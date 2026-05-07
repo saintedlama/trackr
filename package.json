@@ -7,7 +7,9 @@
     "dev": "node --watch --watch-path=public server.js",
     "test": "node --env-file=.env.test --test routes/trackers.test.js routes/events.test.js"
   },
-  "engines": { "node": ">=22.5.0" },
+  "engines": {
+    "node": ">=22.5.0"
+  },
   "dependencies": {
     "express": "^5.0.0"
   }
