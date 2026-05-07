@@ -1,6 +1,6 @@
 import { before, after } from 'node:test';
 import { createServer } from 'node:http';
-import app from '../src/app.js';
+import app from './app.js';
 
 export function useServer() {
   let server;
@@ -22,18 +22,22 @@ export function useServer() {
     return { status: res.status, body };
   }
 
-  function post(path, data) {
+  function send(method, path, data) {
     return req(path, {
-      method: 'POST',
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: data !== undefined ? JSON.stringify(data) : undefined,
     });
   }
+
+  const post  = (path, data) => send('POST',  path, data);
+  const patch = (path, data) => send('PATCH', path, data);
+  const del   = (path)       => req(path, { method: 'DELETE' });
 
   async function createList(name = `list-${Date.now()}`) {
     const { body } = await post('/api/lists', { name });
     return body;
   }
 
-  return { req, post, createList };
+  return { req, post, patch, del, createList };
 }

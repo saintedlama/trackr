@@ -44,3 +44,4 @@ Thumbs.db
 
 # Agent stuff
 .claude/
+.playwright-mcp/

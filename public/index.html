@@ -4,13 +4,40 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>trackr</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand:      '#1E88E5',
+            'brand-dk': '#1565C0',
+            ink:        '#263238',
+            cream:      '#F5F4F0',
+            'cream-dk': '#ECEAE6',
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+        },
+      },
+    }
+  </script>
 </head>
-<body class="bg-gray-50 min-h-dvh text-gray-900" x-data="app()" x-init="init()">
+<body class="bg-cream min-h-dvh text-ink font-sans" x-data="app()" x-init="init()">
 
   <!-- Home view -->
   <div x-show="page === 'home'" x-transition class="max-w-md mx-auto px-4 py-10">
-    <h1 class="text-2xl font-bold tracking-tight mb-6">trackr</h1>
+    <h1 class="mb-6">
+      <img src="/trackr_logo.svg" alt="trackr" class="h-7">
+    </h1>
 
     <!-- List of lists -->
     <div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 mb-4 overflow-hidden">
@@ -18,7 +45,7 @@
         <p class="px-4 py-6 text-center text-sm text-gray-400">No lists yet.</p>
       </template>
       <template x-for="list in lists" :key="list.id">
-        <div class="flex items-center hover:bg-gray-50 transition-colors group">
+        <div class="flex items-center hover:bg-cream-dk transition-colors group">
           <button
             @click="openList(list.id)"
             class="flex-1 text-left px-4 py-3.5 font-medium flex items-center gap-1.5"
@@ -35,11 +62,11 @@
               x-transition:leave="transition ease-in duration-300"
               x-transition:leave-start="opacity-100"
               x-transition:leave-end="opacity-0"
-              class="text-xs text-gray-400"
+              class="text-xs text-brand"
             >Tracked!</span>
             <button
               @click.stop="quickTrack(list.id)"
-              class="px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg hover:bg-gray-700 active:scale-95 transition-all"
+              class="px-3 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand-dk active:scale-95 transition-all"
             >Track</button>
           </div>
         </div>
@@ -51,7 +78,7 @@
       <button
         x-show="!showNewList"
         @click="showNewList = true; $nextTick(() => $refs.nameInput.focus())"
-        class="w-full py-2.5 rounded-xl border border-dashed border-gray-300 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors"
+        class="w-full py-2.5 rounded-xl border border-dashed border-gray-300 text-sm text-gray-500 hover:border-brand hover:text-brand transition-colors"
       >
         + New list
       </button>
@@ -67,13 +94,14 @@
           x-model="newListName"
           type="text"
           placeholder="List name"
-          class="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+          maxlength="40"
+          class="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
           @keydown.escape="showNewList = false; newListName = ''"
         >
         <button
           type="submit"
           :disabled="!newListName.trim()"
-          class="px-4 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl disabled:opacity-40 hover:bg-gray-700 transition-colors"
+          class="px-4 py-2.5 bg-brand text-white text-sm font-semibold rounded-xl disabled:opacity-40 hover:bg-brand-dk transition-colors"
         >
           Create
         </button>
@@ -84,8 +112,40 @@
   <!-- List view -->
   <div x-show="page === 'list'" x-transition class="max-w-md mx-auto px-4 py-10">
     <div class="mb-6">
-      <button @click="goHome()" class="text-sm text-gray-400 hover:text-gray-600 transition-colors mb-1">← trackr</button>
-      <h1 class="text-2xl font-bold tracking-tight" x-text="currentList?.name"></h1>
+      <button @click="goHome()" class="text-sm text-gray-400 hover:text-brand transition-colors mb-3">← trackr</button>
+
+      <!-- Normal display -->
+      <div x-show="!renaming && !confirmDelete" class="flex items-center gap-1 group">
+        <h1 class="text-2xl font-bold tracking-tight flex-1 min-w-0 truncate" x-text="currentList?.name"></h1>
+        <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <button @click="startRename()" title="Rename" class="p-1.5 rounded-lg text-gray-400 hover:text-brand hover:bg-gray-100 transition-colors">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          </button>
+          <button @click="confirmDelete = true" title="Delete" class="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Delete confirm -->
+      <div x-show="confirmDelete" class="flex items-center gap-2">
+        <span class="text-lg font-bold tracking-tight text-gray-400 flex-1 min-w-0 truncate">Delete "<span x-text="currentList?.name"></span>"?</span>
+        <button @click="deleteList()" class="px-3 py-1.5 bg-red-500 text-white text-xs font-semibold rounded-lg hover:bg-red-600 transition-colors">Delete</button>
+        <button @click="confirmDelete = false" class="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">Cancel</button>
+      </div>
+
+      <!-- Rename form -->
+      <form x-show="renaming" @submit.prevent="saveRename()" class="flex items-center gap-2">
+        <input
+          x-ref="renameInput"
+          x-model="renameValue"
+          maxlength="40"
+          class="flex-1 min-w-0 text-2xl font-bold tracking-tight bg-transparent border-b-2 border-brand focus:outline-none"
+          @keydown.escape="renaming = false"
+        >
+        <button type="submit" :disabled="!renameValue.trim()" class="px-3 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg disabled:opacity-40 hover:bg-brand-dk transition-colors">Save</button>
+        <button type="button" @click="renaming = false" class="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">Cancel</button>
+      </form>
     </div>
 
     <!-- Track button -->
@@ -93,7 +153,7 @@
       <button
         @click="track()"
         :disabled="tracking"
-        class="w-full py-7 bg-gray-900 text-white text-xl font-bold rounded-2xl hover:bg-gray-700 active:scale-[0.98] transition-all disabled:opacity-50"
+        class="w-full py-7 bg-brand text-white text-xl font-bold rounded-2xl hover:bg-brand-dk active:scale-[0.98] transition-all disabled:opacity-50"
       >
         Track
       </button>
@@ -106,7 +166,7 @@
           x-transition:leave="transition ease-in duration-300"
           x-transition:leave-start="opacity-100"
           x-transition:leave-end="opacity-0"
-          class="text-sm font-medium text-gray-500"
+          class="text-sm font-medium text-brand"
         >Tracked!</span>
       </div>
     </div>
@@ -121,7 +181,7 @@
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div class="px-4 pt-3 pb-2">
             <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-0.5" x-text="formatDay(group.day)"></p>
-            <p class="text-3xl font-bold tracking-tight" x-text="group.count"></p>
+            <p class="text-3xl font-bold tracking-tight text-brand" x-text="group.count"></p>
             <p class="text-xs text-gray-400" x-text="group.count === 1 ? 'event' : 'events'"></p>
           </div>
           <div class="border-t border-gray-100 divide-y divide-gray-100">
@@ -146,6 +206,9 @@
         flashed: false,
         flashedListId: null,
         tracking: false,
+        renaming: false,
+        renameValue: '',
+        confirmDelete: false,
 
         async init() {
           await this.loadLists();
@@ -174,7 +237,33 @@
           const res = await fetch(`/api/lists/${id}`);
           this.currentList = await res.json();
           await this.loadEvents();
+          this.renaming = false;
+          this.confirmDelete = false;
           this.page = 'list';
+        },
+
+        startRename() {
+          this.confirmDelete = false;
+          this.renameValue = this.currentList.name;
+          this.renaming = true;
+          this.$nextTick(() => this.$refs.renameInput.focus());
+        },
+
+        async saveRename() {
+          const name = this.renameValue.trim();
+          if (!name) return;
+          await fetch(`/api/lists/${this.currentList.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name }),
+          });
+          this.currentList = { ...this.currentList, name };
+          this.renaming = false;
+        },
+
+        async deleteList() {
+          await fetch(`/api/lists/${this.currentList.id}`, { method: 'DELETE' });
+          await this.goHome();
         },
 
         async loadEvents() {

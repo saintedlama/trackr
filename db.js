@@ -24,6 +24,8 @@ const stmts = {
   getLists:      db.prepare('SELECT id, name FROM lists ORDER BY name ASC'),
   getList:       db.prepare('SELECT id, name FROM lists WHERE id = ?'),
   createList:    db.prepare('INSERT INTO lists (name) VALUES (?)'),
+  renameList:    db.prepare('UPDATE lists SET name = ? WHERE id = ?'),
+  deleteList:    db.prepare('DELETE FROM lists WHERE id = ?'),
   createEvent:   db.prepare('INSERT INTO events (list_id) VALUES (?)'),
   getEventsByDay: db.prepare(`
     SELECT DATE(tracked_at) AS day,
@@ -47,6 +49,14 @@ export function getList(id) {
 export function createList(name) {
   const result = stmts.createList.run(name);
   return result.lastInsertRowid;
+}
+
+export function renameList(id, name) {
+  stmts.renameList.run(name, id);
+}
+
+export function deleteList(id) {
+  stmts.deleteList.run(id);
 }
 
 export function createEvent(listId) {

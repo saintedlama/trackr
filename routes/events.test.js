@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { useServer } from './setup.js';
+import { useServer } from '../test-setup.js';
 
 const { req, post, createList } = useServer();
 
