@@ -45,7 +45,7 @@
         <p class="px-4 py-6 text-center text-sm text-gray-400">No trackers yet.</p>
       </template>
       <template x-for="tracker in trackers" :key="tracker.id">
-        <div class="flex items-center hover:bg-cream-dk transition-colors group">
+        <div class="flex items-center transition-colors group" :class="trackerRowClass(tracker)">
           <button
             @click="openTracker(tracker.id)"
             class="flex-1 text-left px-4 py-3.5 font-medium flex items-center gap-1.5"
@@ -132,6 +132,20 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           </button>
         </div>
+      </div>
+      <!-- Daily goal setting -->
+      <div x-show="!renaming && !confirmDelete" class="flex items-center gap-1.5 mt-1">
+        <span class="text-xs text-gray-400">Daily goal</span>
+        <input
+          type="number"
+          min="1"
+          step="1"
+          :value="currentTracker?.countGoal ?? ''"
+          @change="saveCountGoal($event.target.value)"
+          @keydown.enter="$el.blur()"
+          placeholder="—"
+          class="w-10 text-center text-xs tabular-nums border-b border-gray-200 focus:outline-none focus:border-brand bg-transparent text-gray-600 placeholder-gray-300"
+        >
       </div>
 
       <!-- Delete confirm -->
@@ -456,6 +470,26 @@
           } finally {
             this.tracking = false;
           }
+        },
+
+        async saveCountGoal(val) {
+          const countGoal = val === '' ? null : parseInt(val);
+          if (countGoal !== null && (isNaN(countGoal) || countGoal < 1)) return;
+          await fetch(`/api/trackers/${this.currentTracker.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ countGoal }),
+          });
+          this.currentTracker = { ...this.currentTracker, countGoal };
+          await this.loadTrackers();
+        },
+
+        trackerRowClass(tracker) {
+          if (tracker.countGoal && tracker.goal === 'increase' && tracker.todayCount >= tracker.countGoal)
+            return 'bg-green-50 hover:bg-green-100';
+          if (tracker.countGoal && tracker.goal === 'decrease' && tracker.todayCount > tracker.countGoal)
+            return 'bg-red-50 hover:bg-red-100';
+          return 'hover:bg-cream-dk';
         },
 
         async deleteEvent(eventId) {

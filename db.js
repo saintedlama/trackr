@@ -31,6 +31,10 @@ const migrations = [
     name: '001_add_goal_to_trackers',
     run: (db) => db.exec("ALTER TABLE trackers ADD COLUMN goal TEXT NOT NULL DEFAULT 'increase'"),
   },
+  {
+    name: '002_add_count_goal_to_trackers',
+    run: (db) => db.exec('ALTER TABLE trackers ADD COLUMN count_goal INTEGER'),
+  },
 ];
 
 const applied = new Set(
@@ -45,15 +49,16 @@ for (const { name, run } of migrations) {
 
 const stmts = {
   getTrackers:    db.prepare(`
-    SELECT t.id, t.name, t.goal,
+    SELECT t.id, t.name, t.goal, t.count_goal AS countGoal,
       COALESCE((SELECT COUNT(*) FROM events WHERE list_id = t.id AND DATE(tracked_at) = DATE('now')), 0) AS todayCount
     FROM trackers t
     ORDER BY t.name ASC
   `),
-  getTracker:     db.prepare('SELECT id, name, goal FROM trackers WHERE id = ?'),
+  getTracker:     db.prepare('SELECT id, name, goal, count_goal AS countGoal FROM trackers WHERE id = ?'),
   createTracker:  db.prepare('INSERT INTO trackers (name) VALUES (?)'),
   renameTracker:  db.prepare('UPDATE trackers SET name = ? WHERE id = ?'),
   setGoal:        db.prepare('UPDATE trackers SET goal = ? WHERE id = ?'),
+  setCountGoal:   db.prepare('UPDATE trackers SET count_goal = ? WHERE id = ?'),
   deleteTracker:  db.prepare('DELETE FROM trackers WHERE id = ?'),
   createEvent:    db.prepare('INSERT INTO events (list_id) VALUES (?)'),
   getEventsRaw:   db.prepare(`
@@ -84,6 +89,10 @@ export function renameTracker(id, name) {
 
 export function setTrackerGoal(id, goal) {
   stmts.setGoal.run(goal, id);
+}
+
+export function setTrackerCountGoal(id, countGoal) {
+  stmts.setCountGoal.run(countGoal, id);
 }
 
 export function deleteTracker(id) {

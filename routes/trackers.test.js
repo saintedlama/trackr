@@ -166,3 +166,46 @@ test('PATCH /api/trackers/:id goal update does not change name', async () => {
   assert.equal(body.name, 'Keep This Name');
   assert.equal(body.goal, 'decrease');
 });
+
+test('POST /api/trackers defaults countGoal to null', async () => {
+  const { body } = await post('/api/trackers', { name: 'Count Goal Default' });
+  const { body: fetched } = await req(`/api/trackers/${body.id}`);
+  assert.equal(fetched.countGoal, null);
+});
+
+test('PATCH /api/trackers/:id sets countGoal', async () => {
+  const tracker = await createTracker();
+  const { status, body } = await patch(`/api/trackers/${tracker.id}`, { countGoal: 5 });
+  assert.equal(status, 200);
+  assert.equal(body.countGoal, 5);
+  const { body: fetched } = await req(`/api/trackers/${tracker.id}`);
+  assert.equal(fetched.countGoal, 5);
+});
+
+test('PATCH /api/trackers/:id clears countGoal with null', async () => {
+  const tracker = await createTracker();
+  await patch(`/api/trackers/${tracker.id}`, { countGoal: 3 });
+  const { status, body } = await patch(`/api/trackers/${tracker.id}`, { countGoal: null });
+  assert.equal(status, 200);
+  assert.equal(body.countGoal, null);
+});
+
+test('PATCH /api/trackers/:id rejects countGoal of 0', async () => {
+  const tracker = await createTracker();
+  const { status } = await patch(`/api/trackers/${tracker.id}`, { countGoal: 0 });
+  assert.equal(status, 400);
+});
+
+test('PATCH /api/trackers/:id rejects non-integer countGoal', async () => {
+  const tracker = await createTracker();
+  const { status } = await patch(`/api/trackers/${tracker.id}`, { countGoal: 2.5 });
+  assert.equal(status, 400);
+});
+
+test('GET /api/trackers includes countGoal', async () => {
+  const tracker = await createTracker();
+  await patch(`/api/trackers/${tracker.id}`, { countGoal: 7 });
+  const { body } = await req('/api/trackers');
+  const found = body.find(t => t.id === tracker.id);
+  assert.equal(found.countGoal, 7);
+});

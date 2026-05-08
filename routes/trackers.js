@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getTrackers, getTracker, createTracker, renameTracker, setTrackerGoal, deleteTracker } from '../db.js';
+import { getTrackers, getTracker, createTracker, renameTracker, setTrackerGoal, setTrackerCountGoal, deleteTracker } from '../db.js';
 
 const router = Router();
 
@@ -25,7 +25,7 @@ router.patch('/api/trackers/:id', (req, res) => {
   const tracker = getTracker(req.params.id);
   if (!tracker) return res.status(404).json({ error: 'not found' });
 
-  let { name, goal } = req.body || {};
+  let { name, goal, countGoal } = req.body || {};
 
   if (name !== undefined) {
     name = name.trim();
@@ -43,7 +43,16 @@ router.patch('/api/trackers/:id', (req, res) => {
     goal = tracker.goal;
   }
 
-  res.json({ id: tracker.id, name, goal });
+  if (countGoal !== undefined) {
+    if (countGoal !== null && (!Number.isInteger(countGoal) || countGoal < 1)) {
+      return res.status(400).json({ error: 'countGoal must be a positive integer or null' });
+    }
+    setTrackerCountGoal(tracker.id, countGoal);
+  } else {
+    countGoal = tracker.countGoal;
+  }
+
+  res.json({ id: tracker.id, name, goal, countGoal });
 });
 
 router.delete('/api/trackers/:id', (req, res) => {
