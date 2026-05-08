@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/saintedlama/trackr/compare/v1.0.1...v1.0.2) (2026-05-07)
+
+
+### Bug Fixes
+
+* use node 24 to avoid corepack problems ([e81d44e](https://github.com/saintedlama/trackr/commit/e81d44ee96dd2689b1b8a71386588851e7c468f0))
+
 ## [1.0.1](https://github.com/saintedlama/trackr/compare/v1.0.0...v1.0.1) (2026-05-07)
 
 
