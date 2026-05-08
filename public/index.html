@@ -266,16 +266,22 @@
                 </button>
                 <template x-if="expandedHours[group.day + '-' + hg.hour]">
                   <div class="border-t border-gray-100 divide-y divide-gray-100 bg-cream">
-                    <template x-for="t in hg.times" :key="t">
-                      <p class="px-6 py-1.5 text-sm tabular-nums text-gray-400" x-text="t"></p>
+                    <template x-for="t in hg.times" :key="t.id">
+                      <div class="px-6 py-1.5 flex items-center justify-between group/entry">
+                        <span class="text-sm tabular-nums text-gray-400" x-text="t.time"></span>
+                        <button @click="deleteEvent(t.id)" class="text-gray-300 hover:text-red-400 opacity-0 group-hover/entry:opacity-100 transition-opacity text-xs leading-none">×</button>
+                      </div>
                     </template>
                   </div>
                 </template>
               </div>
             </template>
             <!-- Last 3 (or all, if ≤ 3) shown individually -->
-            <template x-for="t in detailTimes(group)" :key="t">
-              <p class="px-4 py-1.5 text-sm tabular-nums text-gray-500" x-text="t"></p>
+            <template x-for="t in detailTimes(group)" :key="t.id">
+              <div class="px-4 py-1.5 flex items-center justify-between group/entry">
+                <span class="text-sm tabular-nums text-gray-500" x-text="t.time"></span>
+                <button @click="deleteEvent(t.id)" class="text-gray-300 hover:text-red-400 opacity-0 group-hover/entry:opacity-100 transition-opacity text-xs leading-none">×</button>
+              </div>
             </template>
           </div>
         </div>
@@ -399,8 +405,8 @@
 
           const hourMap = {};
           for (const group of this.events) {
-            for (const t of group.times) {
-              const h = parseInt(t.slice(0, 2));
+            for (const { time } of group.times) {
+              const h = parseInt(time.slice(0, 2));
               hourMap[h] = (hourMap[h] || 0) + 1;
             }
           }
@@ -450,6 +456,11 @@
           }
         },
 
+        async deleteEvent(eventId) {
+          await fetch(`/api/trackers/${this.currentTracker.id}/events/${eventId}`, { method: 'DELETE' });
+          await this.loadEvents();
+        },
+
         async goHome() {
           this.page = 'home';
           await this.loadTrackers();
@@ -464,7 +475,7 @@
           const older = group.times.slice(0, -3);
           const map = {};
           for (const t of older) {
-            const h = t.slice(0, 2);
+            const h = t.time.slice(0, 2);
             (map[h] ??= []).push(t);
           }
           return Object.entries(map).map(([hour, times]) => ({ hour, times }));

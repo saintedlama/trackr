@@ -51,15 +51,13 @@ const stmts = {
   setGoal:        db.prepare('UPDATE trackers SET goal = ? WHERE id = ?'),
   deleteTracker:  db.prepare('DELETE FROM trackers WHERE id = ?'),
   createEvent:    db.prepare('INSERT INTO events (list_id) VALUES (?)'),
-  getEventsByDay: db.prepare(`
-    SELECT DATE(tracked_at) AS day,
-           COUNT(*)         AS count,
-           GROUP_CONCAT(TIME(tracked_at), ',') AS times
+  getEventsRaw:   db.prepare(`
+    SELECT id, DATE(tracked_at) AS day, TIME(tracked_at) AS time
     FROM events
     WHERE list_id = ?
-    GROUP BY DATE(tracked_at)
-    ORDER BY day DESC
+    ORDER BY tracked_at ASC
   `),
+  deleteEvent:    db.prepare('DELETE FROM events WHERE id = ? AND list_id = ?'),
 };
 
 export function getTrackers() {
@@ -92,9 +90,17 @@ export function createEvent(trackerId) {
 }
 
 export function getEventsByDay(trackerId) {
-  return stmts.getEventsByDay.all(trackerId).map(row => ({
-    day: row.day,
-    count: row.count,
-    times: row.times ? row.times.split(',') : [],
-  }));
+  const rows = stmts.getEventsRaw.all(trackerId);
+  const map = new Map();
+  for (const row of rows) {
+    if (!map.has(row.day)) map.set(row.day, []);
+    map.get(row.day).push({ id: row.id, time: row.time });
+  }
+  return Array.from(map.entries())
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([day, times]) => ({ day, count: times.length, times }));
+}
+
+export function deleteEvent(eventId, trackerId) {
+  stmts.deleteEvent.run(eventId, trackerId);
 }
