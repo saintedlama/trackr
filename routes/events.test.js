@@ -2,13 +2,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { useServer } from '../test-setup.js';
 
-const { req, post, del, createTracker } = useServer();
+const { req, post, patch, del, createTracker } = useServer();
 
-test('POST /api/trackers/:id/events creates an event', async () => {
+test('POST /api/trackers/:id/events creates an event and returns its id', async () => {
   const tracker = await createTracker();
   const { status, body } = await post(`/api/trackers/${tracker.id}/events`);
   assert.equal(status, 200);
   assert.equal(body.ok, true);
+  assert.ok(typeof body.id === 'number');
 });
 
 test('POST /api/trackers/:id/events returns 404 for unknown tracker', async () => {
@@ -43,6 +44,13 @@ test('GET /api/trackers/:id/events groups events by day', async () => {
   assert.ok(typeof body[0].day === 'string');
 });
 
+test('GET /api/trackers/:id/events times have null reason by default', async () => {
+  const tracker = await createTracker();
+  await post(`/api/trackers/${tracker.id}/events`);
+  const { body } = await req(`/api/trackers/${tracker.id}/events`);
+  assert.equal(body[0].times[0].reason, null);
+});
+
 test('GET /api/trackers/:id/events times are objects with id and HH:MM:SS time', async () => {
   const tracker = await createTracker();
   await post(`/api/trackers/${tracker.id}/events`);
@@ -74,6 +82,49 @@ test('DELETE /api/trackers/:id/events/:eventId removes the event', async () => {
 test('DELETE /api/trackers/:id/events/:eventId returns 404 for unknown tracker', async () => {
   const { status } = await del('/api/trackers/99999/events/1');
   assert.equal(status, 404);
+});
+
+test('PATCH /api/trackers/:id/events/:eventId sets reason', async () => {
+  const tracker = await createTracker();
+  const { body: created } = await post(`/api/trackers/${tracker.id}/events`);
+  const { status, body } = await patch(`/api/trackers/${tracker.id}/events/${created.id}`, { reason: 'stress' });
+  assert.equal(status, 200);
+  assert.equal(body.ok, true);
+  const { body: events } = await req(`/api/trackers/${tracker.id}/events`);
+  assert.equal(events[0].times[0].reason, 'stress');
+});
+
+test('PATCH /api/trackers/:id/events/:eventId clears reason with null', async () => {
+  const tracker = await createTracker();
+  const { body: created } = await post(`/api/trackers/${tracker.id}/events`);
+  await patch(`/api/trackers/${tracker.id}/events/${created.id}`, { reason: 'stress' });
+  await patch(`/api/trackers/${tracker.id}/events/${created.id}`, { reason: null });
+  const { body: events } = await req(`/api/trackers/${tracker.id}/events`);
+  assert.equal(events[0].times[0].reason, null);
+});
+
+test('GET /api/trackers/:id/events/reasons returns reason counts', async () => {
+  const tracker = await createTracker();
+  const { body: e1 } = await post(`/api/trackers/${tracker.id}/events`);
+  const { body: e2 } = await post(`/api/trackers/${tracker.id}/events`);
+  await patch(`/api/trackers/${tracker.id}/events/${e1.id}`, { reason: 'boredom' });
+  await patch(`/api/trackers/${tracker.id}/events/${e2.id}`, { reason: 'boredom' });
+  const { body: e3 } = await post(`/api/trackers/${tracker.id}/events`);
+  await patch(`/api/trackers/${tracker.id}/events/${e3.id}`, { reason: 'stress' });
+  const { status, body } = await req(`/api/trackers/${tracker.id}/events/reasons`);
+  assert.equal(status, 200);
+  assert.equal(body[0].reason, 'boredom');
+  assert.equal(body[0].count, 2);
+  assert.equal(body[1].reason, 'stress');
+  assert.equal(body[1].count, 1);
+});
+
+test('GET /api/trackers/:id/events/reasons returns empty for no reasons', async () => {
+  const tracker = await createTracker();
+  await post(`/api/trackers/${tracker.id}/events`);
+  const { status, body } = await req(`/api/trackers/${tracker.id}/events`);
+  assert.equal(status, 200);
+  assert.ok(Array.isArray(body));
 });
 
 test('DELETE /api/trackers/:id/events/:eventId silently ignores unknown event id', async () => {

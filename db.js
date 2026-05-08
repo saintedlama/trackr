@@ -35,6 +35,10 @@ const migrations = [
     name: '002_add_count_goal_to_trackers',
     run: (db) => db.exec('ALTER TABLE trackers ADD COLUMN count_goal INTEGER'),
   },
+  {
+    name: '003_add_reason_to_events',
+    run: (db) => db.exec('ALTER TABLE events ADD COLUMN reason TEXT'),
+  },
 ];
 
 const applied = new Set(
@@ -47,6 +51,7 @@ for (const { name, run } of migrations) {
   db.prepare('INSERT INTO migrations (name) VALUES (?)').run(name);
 }
 
+// Prepared after migrations so all columns are present in the schema.
 const stmts = {
   getTrackers:    db.prepare(`
     SELECT t.id, t.name, t.goal, t.count_goal AS countGoal,
@@ -62,12 +67,20 @@ const stmts = {
   deleteTracker:  db.prepare('DELETE FROM trackers WHERE id = ?'),
   createEvent:    db.prepare('INSERT INTO events (list_id) VALUES (?)'),
   getEventsRaw:   db.prepare(`
-    SELECT id, DATE(tracked_at) AS day, TIME(tracked_at) AS time
+    SELECT id, DATE(tracked_at) AS day, TIME(tracked_at) AS time, reason
     FROM events
     WHERE list_id = ?
     ORDER BY tracked_at ASC
   `),
   deleteEvent:    db.prepare('DELETE FROM events WHERE id = ? AND list_id = ?'),
+  setEventReason: db.prepare('UPDATE events SET reason = ? WHERE id = ? AND list_id = ?'),
+  getReasons:     db.prepare(`
+    SELECT reason, COUNT(*) AS count
+    FROM events
+    WHERE list_id = ? AND reason IS NOT NULL AND reason != ''
+    GROUP BY reason
+    ORDER BY count DESC
+  `),
 };
 
 export function getTrackers() {
@@ -100,7 +113,7 @@ export function deleteTracker(id) {
 }
 
 export function createEvent(trackerId) {
-  stmts.createEvent.run(trackerId);
+  return stmts.createEvent.run(trackerId).lastInsertRowid;
 }
 
 export function getEventsByDay(trackerId) {
@@ -108,7 +121,7 @@ export function getEventsByDay(trackerId) {
   const map = new Map();
   for (const row of rows) {
     if (!map.has(row.day)) map.set(row.day, []);
-    map.get(row.day).push({ id: row.id, time: row.time });
+    map.get(row.day).push({ id: row.id, time: row.time, reason: row.reason ?? null });
   }
   return Array.from(map.entries())
     .sort((a, b) => b[0].localeCompare(a[0]))
@@ -117,4 +130,12 @@ export function getEventsByDay(trackerId) {
 
 export function deleteEvent(eventId, trackerId) {
   stmts.deleteEvent.run(eventId, trackerId);
+}
+
+export function setEventReason(eventId, trackerId, reason) {
+  stmts.setEventReason.run(reason, eventId, trackerId);
+}
+
+export function getReasons(trackerId) {
+  return stmts.getReasons.all(trackerId);
 }

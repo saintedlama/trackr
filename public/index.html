@@ -65,6 +65,10 @@
               x-transition:leave-end="opacity-0"
               class="text-xs text-brand"
             >Tracked!</span>
+            <span x-show="pendingReasonTrackerId === tracker.id" class="flex items-center gap-1 text-xs text-gray-400">
+              <button @click.stop="openTrackerForReason(tracker.id, pendingReasonEventId)" class="hover:text-brand transition-colors">reason?</button>
+              <button @click.stop="pendingReasonTrackerId = null" class="hover:text-gray-600 transition-colors leading-none">×</button>
+            </span>
             <button
               @click.stop="quickTrack(tracker.id)"
               class="px-3 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand-dk active:scale-95 transition-all"
@@ -190,6 +194,21 @@
           class="text-sm font-medium text-brand"
         >Tracked!</span>
       </div>
+      <!-- Reason input, shown after tracking -->
+      <div x-show="lastTrackedEventId" x-transition class="mt-3">
+        <form @submit.prevent="saveEventReason(lastTrackedEventId, reasonValue)" class="flex gap-2">
+          <input
+            type="text"
+            list="reason-list"
+            x-model="reasonValue"
+            placeholder="Add a reason (optional)"
+            @keydown.escape="lastTrackedEventId = null"
+            class="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+          >
+          <button type="submit" class="px-3 py-2 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dk transition-colors">Save</button>
+          <button type="button" @click="lastTrackedEventId = null" class="px-3 py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors">Skip</button>
+        </form>
+      </div>
     </div>
 
     <!-- Stats (only when there's data) -->
@@ -249,6 +268,24 @@
           </div>
         </div>
 
+        <!-- By reason -->
+        <template x-if="reasonDist.length > 0">
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">By reason</p>
+            <div class="space-y-2">
+              <template x-for="r in reasonDist" :key="r.reason">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-gray-500 truncate shrink-0 w-28" x-text="r.reason"></span>
+                  <div class="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                    <div class="bg-brand h-full rounded-full" :style="`width: ${r.count / reasonMax * 100}%`"></div>
+                  </div>
+                  <span class="text-xs tabular-nums text-gray-400 shrink-0 w-5 text-right" x-text="r.count"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+
       </div>
     </template>
 
@@ -282,9 +319,20 @@
                 <template x-if="expandedHours[group.day + '-' + hg.hour]">
                   <div class="border-t border-gray-100 divide-y divide-gray-100 bg-cream">
                     <template x-for="t in hg.times" :key="t.id">
-                      <div class="px-6 py-1.5 flex items-center justify-between group/entry">
-                        <span class="text-sm tabular-nums text-gray-400" x-text="t.time"></span>
-                        <button @click="deleteEvent(t.id)" class="text-gray-300 hover:text-red-400 opacity-0 group-hover/entry:opacity-100 transition-opacity text-xs leading-none">×</button>
+                      <div class="px-6 pt-1.5 pb-1 group/entry">
+                        <div class="flex items-center justify-between">
+                          <span class="text-sm tabular-nums text-gray-400" x-text="t.time"></span>
+                          <button @click="deleteEvent(t.id)" class="text-gray-300 hover:text-red-400 opacity-0 group-hover/entry:opacity-100 transition-opacity text-xs leading-none">×</button>
+                        </div>
+                        <div x-show="editingReasonId === t.id" class="mt-1.5 flex gap-1.5">
+                          <input type="text" list="reason-list" x-model="editingReasonValue" placeholder="reason" @keydown.escape="editingReasonId = null" @keydown.enter.prevent="saveEventReason(t.id, editingReasonValue)" class="flex-1 text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand bg-white">
+                          <button @click="saveEventReason(t.id, editingReasonValue)" class="px-2 py-1 bg-brand text-white text-xs rounded-lg hover:bg-brand-dk">✓</button>
+                          <button @click="editingReasonId = null" class="px-2 py-1 text-gray-400 text-xs hover:text-gray-600">✕</button>
+                        </div>
+                        <div x-show="editingReasonId !== t.id">
+                          <p x-show="t.reason" @click="editingReasonId = t.id; editingReasonValue = t.reason" class="text-xs text-gray-400 hover:text-gray-600 cursor-pointer mt-0.5 truncate" x-text="t.reason"></p>
+                          <p x-show="!t.reason" @click="editingReasonId = t.id; editingReasonValue = ''" class="text-xs text-gray-300 opacity-0 group-hover/entry:opacity-100 hover:text-gray-500 cursor-pointer mt-0.5 transition-opacity">reason?</p>
+                        </div>
                       </div>
                     </template>
                   </div>
@@ -293,9 +341,20 @@
             </template>
             <!-- Last 3 (or all, if ≤ 3) shown individually -->
             <template x-for="t in detailTimes(group)" :key="t.id">
-              <div class="px-4 py-1.5 flex items-center justify-between group/entry">
-                <span class="text-sm tabular-nums text-gray-500" x-text="t.time"></span>
-                <button @click="deleteEvent(t.id)" class="text-gray-300 hover:text-red-400 opacity-0 group-hover/entry:opacity-100 transition-opacity text-xs leading-none">×</button>
+              <div class="px-4 pt-1.5 pb-1 group/entry">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm tabular-nums text-gray-500" x-text="t.time"></span>
+                  <button @click="deleteEvent(t.id)" class="text-gray-300 hover:text-red-400 opacity-0 group-hover/entry:opacity-100 transition-opacity text-xs leading-none">×</button>
+                </div>
+                <div x-show="editingReasonId === t.id" class="mt-1.5 flex gap-1.5">
+                  <input type="text" list="reason-list" x-model="editingReasonValue" placeholder="reason" @keydown.escape="editingReasonId = null" @keydown.enter.prevent="saveEventReason(t.id, editingReasonValue)" class="flex-1 text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand">
+                  <button @click="saveEventReason(t.id, editingReasonValue)" class="px-2 py-1 bg-brand text-white text-xs rounded-lg hover:bg-brand-dk">✓</button>
+                  <button @click="editingReasonId = null" class="px-2 py-1 text-gray-400 text-xs hover:text-gray-600">✕</button>
+                </div>
+                <div x-show="editingReasonId !== t.id">
+                  <p x-show="t.reason" @click="editingReasonId = t.id; editingReasonValue = t.reason" class="text-xs text-gray-400 hover:text-gray-600 cursor-pointer mt-0.5 truncate" x-text="t.reason"></p>
+                  <p x-show="!t.reason" @click="editingReasonId = t.id; editingReasonValue = ''" class="text-xs text-gray-300 opacity-0 group-hover/entry:opacity-100 hover:text-gray-500 cursor-pointer mt-0.5 transition-opacity">reason?</p>
+                </div>
               </div>
             </template>
           </div>
@@ -303,6 +362,12 @@
       </template>
     </div>
   </div>
+
+  <datalist id="reason-list">
+    <template x-for="r in historicReasons" :key="r.reason">
+      <option :value="r.reason"></option>
+    </template>
+  </datalist>
 
   <script>
     function app() {
@@ -328,6 +393,15 @@
         hourlyMax: 1,
         dowDist: [],
         dowMax: 1,
+        reasonDist: [],
+        reasonMax: 1,
+        lastTrackedEventId: null,
+        reasonValue: '',
+        historicReasons: [],
+        editingReasonId: null,
+        editingReasonValue: '',
+        pendingReasonTrackerId: null,
+        pendingReasonEventId: null,
 
         async init() {
           await this.loadTrackers();
@@ -356,9 +430,20 @@
           const res = await fetch(`/api/trackers/${id}`);
           this.currentTracker = await res.json();
           await this.loadEvents();
+          await this.loadHistoricReasons();
+          this.lastTrackedEventId = null;
+          this.reasonValue = '';
+          this.editingReasonId = null;
           this.renaming = false;
           this.confirmDelete = false;
           this.page = 'tracker';
+        },
+
+        async openTrackerForReason(trackerId, eventId) {
+          this.pendingReasonTrackerId = null;
+          await this.openTracker(trackerId);
+          this.lastTrackedEventId = eventId;
+          this.reasonValue = '';
         },
 
         startRename() {
@@ -391,6 +476,24 @@
           this.computeStats();
         },
 
+        async loadHistoricReasons() {
+          const res = await fetch(`/api/trackers/${this.currentTracker.id}/events/reasons`);
+          this.historicReasons = await res.json();
+        },
+
+        async saveEventReason(eventId, reason) {
+          const r = (reason ?? '').trim() || null;
+          await fetch(`/api/trackers/${this.currentTracker.id}/events/${eventId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: r }),
+          });
+          this.lastTrackedEventId = null;
+          this.editingReasonId = null;
+          await this.loadEvents();
+          await this.loadHistoricReasons();
+        },
+
         computeStats() {
           this.totalEvents = this.events.reduce((sum, g) => sum + g.count, 0);
 
@@ -418,11 +521,13 @@
             return count;
           })();
 
+          const reasonMap = {};
           const hourMap = {};
           for (const group of this.events) {
-            for (const { time } of group.times) {
+            for (const { time, reason } of group.times) {
               const h = parseInt(time.slice(0, 2));
               hourMap[h] = (hourMap[h] || 0) + 1;
+              if (reason) reasonMap[reason] = (reasonMap[reason] || 0) + 1;
             }
           }
           this.hourlyDist = Object.entries(hourMap)
@@ -440,6 +545,11 @@
             .map(([dow, count]) => ({ dow: parseInt(dow), label: dowNames[parseInt(dow)], count }))
             .sort((a, b) => a.dow - b.dow);
           this.dowMax = this.dowDist.length ? Math.max(...this.dowDist.map(d => d.count)) : 1;
+
+          this.reasonDist = Object.entries(reasonMap)
+            .map(([reason, count]) => ({ reason, count }))
+            .sort((a, b) => b.count - a.count);
+          this.reasonMax = this.reasonDist.length ? Math.max(...this.reasonDist.map(r => r.count)) : 1;
         },
 
         async toggleGoal() {
@@ -454,8 +564,11 @@
         },
 
         async quickTrack(trackerId) {
-          await fetch(`/api/trackers/${trackerId}/events`, { method: 'POST' });
+          const res = await fetch(`/api/trackers/${trackerId}/events`, { method: 'POST' });
+          const { id: eventId } = await res.json();
           this.flashedTrackerId = trackerId;
+          this.pendingReasonTrackerId = trackerId;
+          this.pendingReasonEventId = eventId;
           await this.loadTrackers();
           setTimeout(() => { this.flashedTrackerId = null; }, 1200);
         },
@@ -463,8 +576,11 @@
         async track() {
           this.tracking = true;
           try {
-            await fetch(`/api/trackers/${this.currentTracker.id}/events`, { method: 'POST' });
+            const res = await fetch(`/api/trackers/${this.currentTracker.id}/events`, { method: 'POST' });
+            const { id: eventId } = await res.json();
             await this.loadEvents();
+            this.lastTrackedEventId = eventId;
+            this.reasonValue = '';
             this.flashed = true;
             setTimeout(() => { this.flashed = false; }, 1200);
           } finally {
