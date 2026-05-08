@@ -109,3 +109,40 @@ test('GET /api/trackers includes newly created tracker', async () => {
   const { body } = await req('/api/trackers');
   assert.ok(body.some(t => t.name === name));
 });
+
+test('POST /api/trackers defaults goal to increase', async () => {
+  const { body } = await post('/api/trackers', { name: 'Goal Default' });
+  assert.equal(body.goal, 'increase');
+});
+
+test('PATCH /api/trackers/:id sets goal to decrease', async () => {
+  const tracker = await createTracker();
+  const { status, body } = await patch(`/api/trackers/${tracker.id}`, { goal: 'decrease' });
+  assert.equal(status, 200);
+  assert.equal(body.goal, 'decrease');
+  const { body: fetched } = await req(`/api/trackers/${tracker.id}`);
+  assert.equal(fetched.goal, 'decrease');
+});
+
+test('PATCH /api/trackers/:id sets goal back to increase', async () => {
+  const tracker = await createTracker();
+  await patch(`/api/trackers/${tracker.id}`, { goal: 'decrease' });
+  const { status, body } = await patch(`/api/trackers/${tracker.id}`, { goal: 'increase' });
+  assert.equal(status, 200);
+  assert.equal(body.goal, 'increase');
+});
+
+test('PATCH /api/trackers/:id with invalid goal returns 400', async () => {
+  const tracker = await createTracker();
+  const { status, body } = await patch(`/api/trackers/${tracker.id}`, { goal: 'maximize' });
+  assert.equal(status, 400);
+  assert.equal(body.error, 'invalid goal');
+});
+
+test('PATCH /api/trackers/:id goal update does not change name', async () => {
+  const tracker = await createTracker('Keep This Name');
+  await patch(`/api/trackers/${tracker.id}`, { goal: 'decrease' });
+  const { body } = await req(`/api/trackers/${tracker.id}`);
+  assert.equal(body.name, 'Keep This Name');
+  assert.equal(body.goal, 'decrease');
+});

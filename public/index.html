@@ -118,6 +118,12 @@
       <div x-show="!renaming && !confirmDelete" class="flex items-center gap-1 group">
         <h1 class="text-2xl font-bold tracking-tight flex-1 min-w-0 truncate" x-text="currentTracker?.name"></h1>
         <div class="flex items-center gap-0.5 shrink-0">
+          <button
+            @click="toggleGoal()"
+            :title="currentTracker?.goal === 'decrease' ? 'Goal: decrease — click to switch' : 'Goal: increase — click to switch'"
+            class="px-2 py-1 rounded-lg text-xs font-semibold tabular-nums text-gray-400 hover:bg-gray-100 transition-colors"
+            x-text="currentTracker?.goal === 'decrease' ? '↓ decrease' : '↑ increase'"
+          ></button>
           <button @click="startRename()" title="Rename" class="p-1.5 rounded-lg text-gray-400 hover:text-brand hover:bg-gray-100 transition-colors">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           </button>
@@ -170,6 +176,66 @@
         >Tracked!</span>
       </div>
     </div>
+
+    <!-- Stats (only when there's data) -->
+    <template x-if="events.length > 0">
+      <div class="mb-6 space-y-3">
+
+        <!-- Summary numbers -->
+        <div class="grid grid-cols-3 gap-3">
+          <div class="bg-white rounded-xl border border-gray-200 px-3 py-3 text-center">
+            <p class="text-2xl font-bold tracking-tight text-brand" x-text="totalEvents"></p>
+            <p class="text-xs text-gray-400 mt-0.5">total</p>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 px-3 py-3 text-center">
+            <p class="text-2xl font-bold tracking-tight text-brand" x-text="dailyAvg"></p>
+            <p class="text-xs text-gray-400 mt-0.5">avg / day</p>
+          </div>
+          <!-- Streak for increase, best day for decrease -->
+          <template x-if="currentTracker?.goal !== 'decrease'">
+            <div class="bg-white rounded-xl border border-gray-200 px-3 py-3 text-center">
+              <p class="text-2xl font-bold tracking-tight text-brand" x-text="streak ? streak + 'd' : '—'"></p>
+              <p class="text-xs text-gray-400 mt-0.5">streak</p>
+            </div>
+          </template>
+          <template x-if="currentTracker?.goal === 'decrease'">
+            <div class="bg-white rounded-xl border border-gray-200 px-3 py-3 text-center">
+              <p class="text-2xl font-bold tracking-tight text-brand" x-text="bestDay"></p>
+              <p class="text-xs text-gray-400 mt-0.5">best day</p>
+            </div>
+          </template>
+        </div>
+
+        <!-- Hourly histogram -->
+        <div class="bg-white rounded-xl border border-gray-200 p-4">
+          <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4" x-text="currentTracker?.goal === 'decrease' ? 'Risk hours' : 'By hour'"></p>
+          <div class="flex items-end gap-2 overflow-x-auto pb-1">
+            <template x-for="h in hourlyDist" :key="h.hour">
+              <div class="flex flex-col items-center gap-1 shrink-0">
+                <span class="text-xs text-gray-400 tabular-nums" x-text="h.count"></span>
+                <div class="bg-brand rounded-t w-7" :style="`height: ${Math.round((h.count / hourlyMax) * 56)}px`"></div>
+                <span class="text-xs text-gray-400 tabular-nums" x-text="formatHour(h.hour)"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Day-of-week histogram -->
+        <div class="bg-white rounded-xl border border-gray-200 p-4">
+          <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4" x-text="currentTracker?.goal === 'decrease' ? 'Hardest days' : 'By day of week'"></p>
+          <div class="flex items-end gap-2 overflow-x-auto pb-1">
+            <template x-for="d in dowDist" :key="d.dow">
+              <div class="flex flex-col items-center gap-1 shrink-0">
+                <span class="text-xs text-gray-400 tabular-nums" x-text="d.count"></span>
+                <div class="bg-brand rounded-t w-7" :style="`height: ${Math.round((d.count / dowMax) * 56)}px`"></div>
+                <span class="text-xs text-gray-400" x-text="d.label"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+
+      </div>
+    </template>
 
     <!-- Events by day -->
     <div class="space-y-3">
@@ -233,6 +299,14 @@
         renameValue: '',
         confirmDelete: false,
         expandedHours: {},
+        totalEvents: 0,
+        dailyAvg: '0',
+        streak: 0,
+        bestDay: 0,
+        hourlyDist: [],
+        hourlyMax: 1,
+        dowDist: [],
+        dowMax: 1,
 
         async init() {
           await this.loadTrackers();
@@ -293,6 +367,69 @@
         async loadEvents() {
           const res = await fetch(`/api/trackers/${this.currentTracker.id}/events`);
           this.events = await res.json();
+          this.computeStats();
+        },
+
+        computeStats() {
+          this.totalEvents = this.events.reduce((sum, g) => sum + g.count, 0);
+
+          this.dailyAvg = this.events.length
+            ? String(parseFloat((this.totalEvents / this.events.length).toFixed(1)))
+            : '0';
+
+          this.bestDay = this.events.length ? Math.min(...this.events.map(e => e.count)) : 0;
+
+          this.streak = (() => {
+            if (!this.events.length) return 0;
+            const days = this.events.map(e => e.day);
+            const today = new Date().toISOString().slice(0, 10);
+            const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+            if (days[0] !== today && days[0] !== yesterday) return 0;
+            let count = 0;
+            let expected = days[0];
+            for (const day of days) {
+              if (day !== expected) break;
+              count++;
+              const d = new Date(expected + 'T12:00:00');
+              d.setDate(d.getDate() - 1);
+              expected = d.toISOString().slice(0, 10);
+            }
+            return count;
+          })();
+
+          const hourMap = {};
+          for (const group of this.events) {
+            for (const t of group.times) {
+              const h = parseInt(t.slice(0, 2));
+              hourMap[h] = (hourMap[h] || 0) + 1;
+            }
+          }
+          this.hourlyDist = Object.entries(hourMap)
+            .map(([h, count]) => ({ hour: parseInt(h), count }))
+            .sort((a, b) => a.hour - b.hour);
+          this.hourlyMax = this.hourlyDist.length ? Math.max(...this.hourlyDist.map(h => h.count)) : 1;
+
+          const dowNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+          const dowMap = {};
+          for (const group of this.events) {
+            const dow = new Date(group.day + 'T12:00:00').getDay();
+            dowMap[dow] = (dowMap[dow] || 0) + group.count;
+          }
+          this.dowDist = Object.entries(dowMap)
+            .map(([dow, count]) => ({ dow: parseInt(dow), label: dowNames[parseInt(dow)], count }))
+            .sort((a, b) => a.dow - b.dow);
+          this.dowMax = this.dowDist.length ? Math.max(...this.dowDist.map(d => d.count)) : 1;
+        },
+
+        async toggleGoal() {
+          const goal = this.currentTracker.goal === 'decrease' ? 'increase' : 'decrease';
+          await fetch(`/api/trackers/${this.currentTracker.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ goal }),
+          });
+          this.currentTracker = { ...this.currentTracker, goal };
+          this.computeStats();
         },
 
         async quickTrack(trackerId) {
@@ -316,6 +453,10 @@
         async goHome() {
           this.page = 'home';
           await this.loadTrackers();
+        },
+
+        formatHour(h) {
+          return new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).format(new Date(2000, 0, 1, h));
         },
 
         hourGroups(group) {

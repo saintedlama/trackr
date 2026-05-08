@@ -2,7 +2,11 @@
 
 Hit a button. See how often you do things. Dead simple.
 
-![trackr](screenshots/screenshot-habit-trackers.png)
+One button to track
+<p align="center"><img src="screenshots/screenshot-habit-trackers.png" width="600"></p>
+
+Nice graphs to see how you're doing
+<p align="center"><img src="screenshots/screenshot-aggregations.png" width="600"></p>
 
 ## Run
 
