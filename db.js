@@ -44,7 +44,12 @@ for (const { name, run } of migrations) {
 }
 
 const stmts = {
-  getTrackers:    db.prepare('SELECT id, name, goal FROM trackers ORDER BY name ASC'),
+  getTrackers:    db.prepare(`
+    SELECT t.id, t.name, t.goal,
+      COALESCE((SELECT COUNT(*) FROM events WHERE list_id = t.id AND DATE(tracked_at) = DATE('now')), 0) AS todayCount
+    FROM trackers t
+    ORDER BY t.name ASC
+  `),
   getTracker:     db.prepare('SELECT id, name, goal FROM trackers WHERE id = ?'),
   createTracker:  db.prepare('INSERT INTO trackers (name) VALUES (?)'),
   renameTracker:  db.prepare('UPDATE trackers SET name = ? WHERE id = ?'),

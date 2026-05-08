@@ -51,6 +51,7 @@
             class="flex-1 text-left px-4 py-3.5 font-medium flex items-center gap-1.5"
           >
             <span x-text="tracker.name"></span>
+            <span x-show="tracker.todayCount > 0" x-text="tracker.todayCount" class="text-xs font-semibold text-brand bg-brand/10 px-1.5 py-0.5 rounded-full tabular-nums"></span>
             <span class="text-gray-300 group-hover:text-gray-400 transition-colors text-sm">→</span>
           </button>
           <div class="pr-3 pl-1 flex items-center gap-2 shrink-0">
@@ -441,6 +442,7 @@
         async quickTrack(trackerId) {
           await fetch(`/api/trackers/${trackerId}/events`, { method: 'POST' });
           this.flashedTrackerId = trackerId;
+          await this.loadTrackers();
           setTimeout(() => { this.flashedTrackerId = null; }, 1200);
         },
 

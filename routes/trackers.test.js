@@ -4,10 +4,30 @@ import { useServer } from '../test-setup.js';
 
 const { req, post, patch, del, createTracker } = useServer();
 
+async function postEvent(trackerId) {
+  return post(`/api/trackers/${trackerId}/events`);
+}
+
 test('GET /api/trackers returns an array', async () => {
   const { status, body } = await req('/api/trackers');
   assert.equal(status, 200);
   assert.ok(Array.isArray(body));
+});
+
+test('GET /api/trackers includes todayCount of 0 for new tracker', async () => {
+  const tracker = await createTracker();
+  const { body } = await req('/api/trackers');
+  const found = body.find(t => t.id === tracker.id);
+  assert.equal(found.todayCount, 0);
+});
+
+test('GET /api/trackers todayCount increments with each event', async () => {
+  const tracker = await createTracker();
+  await postEvent(tracker.id);
+  await postEvent(tracker.id);
+  const { body } = await req('/api/trackers');
+  const found = body.find(t => t.id === tracker.id);
+  assert.equal(found.todayCount, 2);
 });
 
 test('POST /api/trackers creates a tracker and returns 201', async () => {
