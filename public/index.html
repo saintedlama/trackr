@@ -33,11 +33,115 @@
 </head>
 <body class="bg-cream min-h-dvh text-ink font-sans" x-data="app()" x-init="init()">
 
+  <!-- Setup page (first run) -->
+  <div x-show="authState === 'setup'" class="min-h-dvh flex items-center justify-center px-4">
+    <div class="w-full max-w-sm">
+      <h1 class="text-2xl font-bold tracking-tight mb-1 text-center">Welcome to trackr</h1>
+      <p class="text-sm text-gray-400 text-center mb-8">Create your admin account to get started.</p>
+      <form @submit.prevent="setup()" class="space-y-3">
+        <input x-model="setupUsername" type="text" placeholder="Username" autocomplete="username"
+          class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent">
+        <input x-model="setupPassword" type="password" placeholder="Password (min 8 characters)" autocomplete="new-password"
+          class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent">
+        <p x-show="setupError" x-text="setupError" class="text-xs text-red-500"></p>
+        <button type="submit" :disabled="!setupUsername.trim() || setupPassword.length < 8"
+          class="w-full py-2.5 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dk disabled:opacity-40 transition-colors">
+          Create admin account
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Login page -->
+  <div x-show="authState === 'login'" class="min-h-dvh flex items-center justify-center px-4">
+    <div class="w-full max-w-sm">
+      <h1 class="mb-8 text-center"><img src="/trackr_logo.svg" alt="trackr" class="h-8 mx-auto"></h1>
+      <form @submit.prevent="login()" class="space-y-3">
+        <input x-model="loginUsername" type="text" placeholder="Username" autocomplete="username"
+          class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent">
+        <input x-model="loginPassword" type="password" placeholder="Password" autocomplete="current-password"
+          class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent">
+        <p x-show="loginError" x-text="loginError" class="text-xs text-red-500"></p>
+        <button type="submit" :disabled="!loginUsername.trim() || !loginPassword"
+          class="w-full py-2.5 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dk disabled:opacity-40 transition-colors">
+          Log in
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Authenticated app -->
+  <div x-show="authState === 'app'">
+
+  <!-- Admin panel -->
+  <div x-show="page === 'admin'" x-transition class="max-w-md mx-auto px-4 py-10">
+    <button @click="page = 'home'" class="text-sm text-gray-400 hover:text-brand transition-colors mb-6">← trackr</button>
+    <h2 class="text-xl font-bold tracking-tight mb-6">User management</h2>
+
+    <!-- Add user form -->
+    <div class="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+      <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Add user</p>
+      <form @submit.prevent="addUser()" class="space-y-2">
+        <div class="flex gap-2">
+          <input x-model="newUserUsername" type="text" placeholder="Username"
+            class="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent">
+          <input x-model="newUserPassword" type="password" placeholder="Password (min 8)"
+            class="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent">
+          <button type="submit" :disabled="!newUserUsername.trim() || newUserPassword.length < 8"
+            class="px-4 py-2 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dk disabled:opacity-40 transition-colors shrink-0">
+            Add
+          </button>
+        </div>
+        <p x-show="newUserError" x-text="newUserError" class="text-xs text-red-500"></p>
+      </form>
+    </div>
+
+    <!-- User list -->
+    <div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+      <template x-for="user in adminUsers" :key="user.id">
+        <div class="px-4 py-3">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="font-medium text-sm truncate" x-text="user.username"></span>
+              <span class="text-xs px-1.5 py-0.5 rounded font-medium"
+                :class="user.role === 'admin' ? 'bg-brand/10 text-brand' : 'bg-gray-100 text-gray-500'"
+                x-text="user.role"></span>
+              <span x-show="user.id === currentUser?.id" class="text-xs text-gray-300">(you)</span>
+            </div>
+            <div x-show="user.id !== currentUser?.id" class="flex items-center gap-1 shrink-0">
+              <button @click="toggleRole(user)" class="px-2 py-1 text-xs text-gray-500 hover:text-brand hover:bg-gray-100 rounded-lg transition-colors"
+                x-text="user.role === 'admin' ? 'Make user' : 'Make admin'"></button>
+              <button @click="resetPasswordUserId === user.id ? resetPasswordUserId = null : (resetPasswordUserId = user.id, resetPasswordValue = '')"
+                class="px-2 py-1 text-xs text-gray-500 hover:text-brand hover:bg-gray-100 rounded-lg transition-colors">Reset PW</button>
+              <button @click="removeUser(user.id)" class="px-2 py-1 text-xs text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">Delete</button>
+            </div>
+          </div>
+          <!-- Inline password reset form -->
+          <div x-show="resetPasswordUserId === user.id" class="mt-2 flex gap-2">
+            <input type="password" x-model="resetPasswordValue" placeholder="New password (min 8)"
+              @keydown.escape="resetPasswordUserId = null"
+              class="flex-1 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand">
+            <button @click="resetPassword(user.id)" :disabled="resetPasswordValue.length < 8"
+              class="px-3 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand-dk disabled:opacity-40 transition-colors">Set</button>
+            <button @click="resetPasswordUserId = null" class="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors">Cancel</button>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
   <!-- Home view -->
   <div x-show="page === 'home'" x-transition class="max-w-md mx-auto px-4 py-10">
-    <h1 class="mb-6">
-      <img src="/trackr_logo.svg" alt="trackr" class="h-7">
-    </h1>
+    <div class="flex items-center justify-between mb-6">
+      <h1><img src="/trackr_logo.svg" alt="trackr" class="h-7"></h1>
+      <div class="flex items-center gap-3">
+        <button x-show="currentUser?.role === 'admin'" @click="openAdmin()"
+          class="text-xs text-gray-400 hover:text-brand transition-colors">Admin</button>
+        <span class="text-xs text-gray-300" x-show="currentUser?.role === 'admin'">·</span>
+        <span class="text-xs text-gray-500" x-text="currentUser?.username"></span>
+        <button @click="logout()" class="text-xs text-gray-400 hover:text-red-500 transition-colors">Logout</button>
+      </div>
+    </div>
 
     <!-- Tracker list -->
     <div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 mb-4 overflow-hidden">
@@ -363,6 +467,8 @@
     </div>
   </div>
 
+  </div><!-- end authState === 'app' -->
+
   <datalist id="reason-list">
     <template x-for="r in historicReasons" :key="r.reason">
       <option :value="r.reason"></option>
@@ -403,8 +509,127 @@
         pendingReasonTrackerId: null,
         pendingReasonEventId: null,
 
+        // Auth
+        authState: 'loading',
+        currentUser: null,
+        loginUsername: '',
+        loginPassword: '',
+        loginError: '',
+        setupUsername: '',
+        setupPassword: '',
+        setupError: '',
+
+        // Admin
+        adminUsers: [],
+        newUserUsername: '',
+        newUserPassword: '',
+        newUserError: '',
+        resetPasswordUserId: null,
+        resetPasswordValue: '',
+
         async init() {
+          const res = await fetch('/api/me');
+          const me = await res.json();
+          if (me.setupRequired) {
+            this.authState = 'setup';
+          } else if (me.authenticated) {
+            this.currentUser = me;
+            this.authState = 'app';
+            await this.loadTrackers();
+          } else {
+            this.authState = 'login';
+          }
+        },
+
+        async login() {
+          this.loginError = '';
+          const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: this.loginUsername, password: this.loginPassword }),
+          });
+          const body = await res.json();
+          if (!res.ok) { this.loginError = body.error || 'Login failed'; return; }
+          this.currentUser = body;
+          this.loginUsername = '';
+          this.loginPassword = '';
+          this.authState = 'app';
           await this.loadTrackers();
+        },
+
+        async setup() {
+          this.setupError = '';
+          const res = await fetch('/api/setup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: this.setupUsername, password: this.setupPassword }),
+          });
+          const body = await res.json();
+          if (!res.ok) { this.setupError = body.error || 'Setup failed'; return; }
+          this.currentUser = body;
+          this.setupUsername = '';
+          this.setupPassword = '';
+          this.authState = 'app';
+          await this.loadTrackers();
+        },
+
+        async logout() {
+          await fetch('/api/logout', { method: 'POST' });
+          this.currentUser = null;
+          this.trackers = [];
+          this.events = [];
+          this.page = 'home';
+          this.authState = 'login';
+        },
+
+        async openAdmin() {
+          const res = await fetch('/api/admin/users');
+          this.adminUsers = await res.json();
+          this.newUserUsername = '';
+          this.newUserPassword = '';
+          this.newUserError = '';
+          this.resetPasswordUserId = null;
+          this.page = 'admin';
+        },
+
+        async addUser() {
+          this.newUserError = '';
+          const res = await fetch('/api/admin/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: this.newUserUsername.trim(), password: this.newUserPassword }),
+          });
+          const body = await res.json();
+          if (!res.ok) { this.newUserError = body.error || 'Failed to add user'; return; }
+          this.newUserUsername = '';
+          this.newUserPassword = '';
+          this.adminUsers.push(body);
+        },
+
+        async removeUser(userId) {
+          await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+          this.adminUsers = this.adminUsers.filter(u => u.id !== userId);
+        },
+
+        async toggleRole(user) {
+          const role = user.role === 'admin' ? 'user' : 'admin';
+          await fetch(`/api/admin/users/${user.id}/role`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role }),
+          });
+          user.role = role;
+        },
+
+        async resetPassword(userId) {
+          if (this.resetPasswordValue.length < 8) return;
+          await fetch(`/api/admin/users/${userId}/password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: this.resetPasswordValue }),
+          });
+          this.resetPasswordUserId = null;
+          this.resetPasswordValue = '';
         },
 
         async loadTrackers() {

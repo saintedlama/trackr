@@ -1,28 +1,30 @@
 import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
 import { getTrackers, getTracker, createTracker, renameTracker, setTrackerGoal, setTrackerCountGoal, deleteTracker } from '../db.js';
 
 const router = Router();
+router.use(requireAuth);
 
 router.get('/api/trackers', (req, res) => {
-  res.json(getTrackers());
+  res.json(getTrackers(req.session.userId));
 });
 
 router.post('/api/trackers', (req, res) => {
   const name = (req.body?.name || '').trim();
   if (!name) return res.status(400).json({ error: 'name required' });
   if (name.length > 40) return res.status(400).json({ error: 'name too long' });
-  const id = createTracker(name);
-  res.status(201).json({ id, name, goal: 'increase' });
+  const id = createTracker(name, req.session.userId);
+  res.status(201).json({ id, name, goal: 'increase', countGoal: null });
 });
 
 router.get('/api/trackers/:id', (req, res) => {
-  const tracker = getTracker(req.params.id);
+  const tracker = getTracker(req.params.id, req.session.userId);
   if (!tracker) return res.status(404).json({ error: 'not found' });
   res.json(tracker);
 });
 
 router.patch('/api/trackers/:id', (req, res) => {
-  const tracker = getTracker(req.params.id);
+  const tracker = getTracker(req.params.id, req.session.userId);
   if (!tracker) return res.status(404).json({ error: 'not found' });
 
   let { name, goal, countGoal } = req.body || {};
@@ -56,7 +58,7 @@ router.patch('/api/trackers/:id', (req, res) => {
 });
 
 router.delete('/api/trackers/:id', (req, res) => {
-  const tracker = getTracker(req.params.id);
+  const tracker = getTracker(req.params.id, req.session.userId);
   if (!tracker) return res.status(404).json({ error: 'not found' });
   deleteTracker(tracker.id);
   res.json({ ok: true });
