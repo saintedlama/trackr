@@ -8,28 +8,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="manifest" href="/site.webmanifest">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand:      '#1E88E5',
-            'brand-dk': '#1565C0',
-            ink:        '#263238',
-            cream:      '#F5F4F0',
-            'cream-dk': '#ECEAE6',
-          },
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-          },
-        },
-      },
-    }
-  </script>
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body class="bg-cream min-h-dvh text-ink font-sans" x-data="app()" x-init="init()">
 
@@ -40,9 +19,9 @@
       <p class="text-sm text-gray-400 text-center mb-8">Create your admin account to get started.</p>
       <form @submit.prevent="setup()" class="space-y-3">
         <input x-model="setupUsername" type="text" placeholder="Username" autocomplete="username"
-          class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent">
+          class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-brand focus:border-transparent">
         <input x-model="setupPassword" type="password" placeholder="Password" autocomplete="new-password"
-          class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent">
+          class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-brand focus:border-transparent">
         <p x-show="setupError" x-text="setupError" class="text-xs text-red-500"></p>
         <button type="submit" :disabled="!setupUsername.trim() || !setupPassword"
           class="w-full py-2.5 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dk disabled:opacity-40 transition-colors">
@@ -58,9 +37,9 @@
       <h1 class="mb-8 text-center"><img src="/trackr_logo.svg" alt="trackr" class="h-8 mx-auto"></h1>
       <form @submit.prevent="login()" class="space-y-3">
         <input x-model="loginUsername" type="text" placeholder="Username" autocomplete="username"
-          class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent">
+          class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-brand focus:border-transparent">
         <input x-model="loginPassword" type="password" placeholder="Password" autocomplete="current-password"
-          class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent">
+          class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-brand focus:border-transparent">
         <p x-show="loginError" x-text="loginError" class="text-xs text-red-500"></p>
         <button type="submit" :disabled="!loginUsername.trim() || !loginPassword"
           class="w-full py-2.5 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dk disabled:opacity-40 transition-colors">
@@ -83,9 +62,9 @@
       <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Add user</p>
       <form @submit.prevent="addUser()" class="space-y-2">
         <input x-model="newUserUsername" type="text" placeholder="Username" autocomplete="off"
-          class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent">
+          class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-brand focus:border-transparent">
         <input x-model="newUserPassword" type="password" placeholder="Password" autocomplete="new-password"
-          class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent">
+          class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-brand focus:border-transparent">
         <div class="flex items-center justify-between pt-1">
           <p x-show="newUserError" x-text="newUserError" class="text-xs text-red-500"></p>
           <button type="submit" :disabled="!newUserUsername.trim() || !newUserPassword"
@@ -119,15 +98,16 @@
             </div>
           </div>
           <!-- Inline password reset form -->
-          <div x-show="resetPasswordUserId === user.id" class="mt-2 flex gap-2">
+          <form x-show="resetPasswordUserId === user.id" class="mt-2 flex gap-2" @submit.prevent="resetPassword(user.id)">
             <input type="password" x-model="resetPasswordValue" placeholder="New password"
+              autocomplete="new-password"
               @keydown.escape="resetPasswordUserId = null"
-              class="flex-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand">
-            <button @click="resetPassword(user.id)" :disabled="!resetPasswordValue"
+              class="flex-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-brand">
+            <button type="submit" :disabled="!resetPasswordValue"
               class="px-3 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand-dk disabled:opacity-40 transition-colors">Set</button>
-            <button @click="resetPasswordUserId = null"
+            <button type="button" @click="resetPasswordUserId = null"
               class="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors">Cancel</button>
-          </div>
+          </form>
         </div>
       </template>
     </div>
@@ -203,7 +183,7 @@
           type="text"
           placeholder="Tracker name"
           maxlength="40"
-          class="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+          class="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-brand focus:border-transparent"
           @keydown.escape="showNewTracker = false; newTrackerName = ''"
         >
         <button
@@ -251,7 +231,7 @@
           @change="saveCountGoal($event.target.value)"
           @keydown.enter="$el.blur()"
           placeholder="—"
-          class="w-10 text-center text-xs tabular-nums border-b border-gray-200 focus:outline-none focus:border-brand bg-transparent text-gray-600 placeholder-gray-300"
+          class="w-10 text-center text-xs tabular-nums border-b border-gray-200 focus:outline-hidden focus:border-brand bg-transparent text-gray-600 placeholder-gray-300"
         >
       </div>
 
@@ -268,7 +248,7 @@
           x-ref="renameInput"
           x-model="renameValue"
           maxlength="40"
-          class="flex-1 min-w-0 text-2xl font-bold tracking-tight bg-transparent border-b-2 border-brand focus:outline-none"
+          class="flex-1 min-w-0 text-2xl font-bold tracking-tight bg-transparent border-b-2 border-brand focus:outline-hidden"
           @keydown.escape="renaming = false"
         >
         <button type="submit" :disabled="!renameValue.trim()" class="px-3 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg disabled:opacity-40 hover:bg-brand-dk transition-colors">Save</button>
@@ -306,7 +286,7 @@
             x-model="reasonValue"
             placeholder="Add a reason (optional)"
             @keydown.escape="lastTrackedEventId = null"
-            class="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+            class="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand focus:border-transparent"
           >
           <button type="submit" class="px-3 py-2 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dk transition-colors">Save</button>
           <button type="button" @click="lastTrackedEventId = null" class="px-3 py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors">Skip</button>
@@ -428,7 +408,7 @@
                           <button @click="deleteEvent(t.id)" class="text-gray-300 hover:text-red-400 opacity-0 group-hover/entry:opacity-100 transition-opacity text-xs leading-none">×</button>
                         </div>
                         <div x-show="editingReasonId === t.id" class="mt-1.5 flex gap-1.5">
-                          <input type="text" list="reason-list" x-model="editingReasonValue" placeholder="reason" @keydown.escape="editingReasonId = null" @keydown.enter.prevent="saveEventReason(t.id, editingReasonValue)" class="flex-1 text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand bg-white">
+                          <input type="text" list="reason-list" x-model="editingReasonValue" placeholder="reason" @keydown.escape="editingReasonId = null" @keydown.enter.prevent="saveEventReason(t.id, editingReasonValue)" class="flex-1 text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-brand bg-white">
                           <button @click="saveEventReason(t.id, editingReasonValue)" class="px-2 py-1 bg-brand text-white text-xs rounded-lg hover:bg-brand-dk">✓</button>
                           <button @click="editingReasonId = null" class="px-2 py-1 text-gray-400 text-xs hover:text-gray-600">✕</button>
                         </div>
@@ -450,7 +430,7 @@
                   <button @click="deleteEvent(t.id)" class="text-gray-300 hover:text-red-400 opacity-0 group-hover/entry:opacity-100 transition-opacity text-xs leading-none">×</button>
                 </div>
                 <div x-show="editingReasonId === t.id" class="mt-1.5 flex gap-1.5">
-                  <input type="text" list="reason-list" x-model="editingReasonValue" placeholder="reason" @keydown.escape="editingReasonId = null" @keydown.enter.prevent="saveEventReason(t.id, editingReasonValue)" class="flex-1 text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand">
+                  <input type="text" list="reason-list" x-model="editingReasonValue" placeholder="reason" @keydown.escape="editingReasonId = null" @keydown.enter.prevent="saveEventReason(t.id, editingReasonValue)" class="flex-1 text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-brand">
                   <button @click="saveEventReason(t.id, editingReasonValue)" class="px-2 py-1 bg-brand text-white text-xs rounded-lg hover:bg-brand-dk">✓</button>
                   <button @click="editingReasonId = null" class="px-2 py-1 text-gray-400 text-xs hover:text-gray-600">✕</button>
                 </div>
@@ -886,6 +866,6 @@
       };
     }
   </script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script defer src="/alpinejs.min.js"></script>
 </body>
 </html>

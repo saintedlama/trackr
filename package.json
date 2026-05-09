@@ -5,13 +5,20 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch --watch-path=public server.js",
+    "dev:assets": "node scripts/copy-assets.js && tailwindcss -i src/style.css -o public/style.css --watch",
+    "build:assets": "node scripts/copy-assets.js && tailwindcss -i src/style.css -o public/style.css --minify",
     "test": "node --env-file=.env.test --test tracker/router.test.js auth/router.test.js account/router.test.js"
   },
   "engines": {
     "node": ">=22.5.0"
   },
   "dependencies": {
-    "express": "^5.0.0",
+    "express": "^5.2.1",
     "jose": "^6.2.3"
+  },
+  "devDependencies": {
+    "@fontsource-variable/inter": "^5.2.8",
+    "@tailwindcss/cli": "^4.3.0",
+    "alpinejs": "^3.15.12"
   }
 }

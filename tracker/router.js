@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { trackers as db } from '../db/index.js';
+import { trackers as db } from './store.js';
 const {
   getTrackers, getTracker, createTracker, renameTracker,
   setTrackerGoal, setTrackerCountGoal, deleteTracker,

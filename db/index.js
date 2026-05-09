@@ -1,7 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
 import { runMigrations } from './migrations.js';
-import { createAccountStore } from '../account/store.js';
-import { createTrackerStore } from '../tracker/store.js';
 
 const DB_PATH = process.env.DB_PATH || './trackr.db';
 const db = new DatabaseSync(DB_PATH);
@@ -31,5 +29,4 @@ db.exec(`
 
 runMigrations(db);
 
-export const accounts = createAccountStore(db);
-export const trackers = createTrackerStore(db);
+export { db };

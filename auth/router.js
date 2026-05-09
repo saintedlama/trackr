@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { accounts } from '../db/index.js';
+import { accounts } from '../account/store.js';
 const { getUserByUsername, getUser, createUser, getUserCount, assignOrphanTrackers } = accounts;
 import { hashPassword, verifyPassword } from './passwords.js';
 
