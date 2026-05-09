@@ -866,6 +866,9 @@
       };
     }
   </script>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+  </script>
   <script defer src="/alpinejs.min.js"></script>
 </body>
 </html>
