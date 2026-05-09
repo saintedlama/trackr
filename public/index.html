@@ -10,7 +10,7 @@
   <link rel="manifest" href="/site.webmanifest">
   <link rel="stylesheet" href="/style.css">
 </head>
-<body class="bg-cream min-h-dvh text-ink font-sans" x-data="app()" x-init="init()">
+<body class="bg-cream min-h-dvh text-ink font-sans" x-data="authShell()" x-init="init()" x-handler.global="[authGuard]">
 
   <!-- Setup page (first run) -->
   <div x-show="authState === 'setup'" class="min-h-dvh flex items-center justify-center px-4">
@@ -49,826 +49,419 @@
     </div>
   </div>
 
-  <!-- Authenticated app -->
-  <div x-show="authState === 'app'">
-
-  <!-- Admin panel -->
-  <div x-show="page === 'admin'" x-transition class="max-w-md mx-auto px-4 py-10">
-    <button @click="page = 'home'" class="text-sm text-gray-400 hover:text-brand transition-colors mb-6">← trackr</button>
-    <h2 class="text-xl font-bold tracking-tight mb-6">User management</h2>
-
-    <!-- Add user form -->
-    <div class="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-      <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Add user</p>
-      <form @submit.prevent="addUser()" class="space-y-2">
-        <input x-model="newUserUsername" type="text" placeholder="Username" autocomplete="off"
-          class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-brand focus:border-transparent">
-        <input x-model="newUserPassword" type="password" placeholder="Password" autocomplete="new-password"
-          class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-brand focus:border-transparent">
-        <div class="flex items-center justify-between pt-1">
-          <p x-show="newUserError" x-text="newUserError" class="text-xs text-red-500"></p>
-          <button type="submit" :disabled="!newUserUsername.trim() || !newUserPassword"
-            class="ml-auto px-4 py-2 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dk disabled:opacity-40 transition-colors">
-            Add user
-          </button>
+  <!-- Route definitions -->
+  <template x-route="/" x-template>
+    <div x-data="home()" x-init="init()" class="max-w-md mx-auto px-4 py-10">
+      <div class="flex items-center justify-between mb-6">
+        <h1><img src="/trackr_logo.svg" alt="trackr" class="h-7"></h1>
+        <div class="flex items-center gap-3">
+          <button x-show="$store.auth.user?.role === 'admin'" @click="$router.navigate('/admin')"
+            class="text-xs text-gray-400 hover:text-brand transition-colors">Admin</button>
+          <span class="text-xs text-gray-300" x-show="$store.auth.user?.role === 'admin'">·</span>
+          <span class="text-xs text-gray-500" x-text="$store.auth.user?.username"></span>
+          <button @click="logout()" class="text-xs text-gray-400 hover:text-red-500 transition-colors">Logout</button>
         </div>
-      </form>
-    </div>
-
-    <!-- User list -->
-    <div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
-      <template x-for="user in adminUsers" :key="user.id">
-        <div class="px-4 py-3">
-          <div class="flex items-center justify-between gap-3 min-w-0">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="font-medium text-sm truncate" x-text="user.username"></span>
-              <span class="text-xs px-1.5 py-0.5 rounded-md font-medium shrink-0"
-                :class="user.role === 'admin' ? 'bg-brand/10 text-brand' : 'bg-gray-100 text-gray-500'"
-                x-text="user.role"></span>
-              <span x-show="user.id === currentUser?.id" class="text-xs text-gray-300 shrink-0">(you)</span>
-            </div>
-            <div x-show="user.id !== currentUser?.id" class="flex items-center gap-1 shrink-0">
-              <button @click="toggleRole(user)"
-                class="px-2.5 py-1 text-xs text-gray-500 hover:text-brand hover:bg-gray-100 rounded-lg transition-colors"
-                x-text="user.role === 'admin' ? 'Make user' : 'Make admin'"></button>
-              <button @click="resetPasswordUserId === user.id ? resetPasswordUserId = null : (resetPasswordUserId = user.id, resetPasswordValue = '')"
-                class="px-2.5 py-1 text-xs text-gray-500 hover:text-brand hover:bg-gray-100 rounded-lg transition-colors">Reset PW</button>
-              <button @click="removeUser(user.id)"
-                class="px-2.5 py-1 text-xs text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">Delete</button>
-            </div>
-          </div>
-          <!-- Inline password reset form -->
-          <form x-show="resetPasswordUserId === user.id" class="mt-2 flex gap-2" @submit.prevent="resetPassword(user.id)">
-            <input type="password" x-model="resetPasswordValue" placeholder="New password"
-              autocomplete="new-password"
-              @keydown.escape="resetPasswordUserId = null"
-              class="flex-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-brand">
-            <button type="submit" :disabled="!resetPasswordValue"
-              class="px-3 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand-dk disabled:opacity-40 transition-colors">Set</button>
-            <button type="button" @click="resetPasswordUserId = null"
-              class="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors">Cancel</button>
-          </form>
-        </div>
-      </template>
-    </div>
-  </div>
-
-  <!-- Home view -->
-  <div x-show="page === 'home'" x-transition class="max-w-md mx-auto px-4 py-10">
-    <div class="flex items-center justify-between mb-6">
-      <h1><img src="/trackr_logo.svg" alt="trackr" class="h-7"></h1>
-      <div class="flex items-center gap-3">
-        <button x-show="currentUser?.role === 'admin'" @click="openAdmin()"
-          class="text-xs text-gray-400 hover:text-brand transition-colors">Admin</button>
-        <span class="text-xs text-gray-300" x-show="currentUser?.role === 'admin'">·</span>
-        <span class="text-xs text-gray-500" x-text="currentUser?.username"></span>
-        <button @click="logout()" class="text-xs text-gray-400 hover:text-red-500 transition-colors">Logout</button>
       </div>
-    </div>
 
-    <!-- Tracker list -->
-    <div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 mb-4 overflow-hidden">
-      <template x-if="trackers.length === 0">
-        <p class="px-4 py-6 text-center text-sm text-gray-400">No trackers yet.</p>
-      </template>
-      <template x-for="tracker in trackers" :key="tracker.id">
-        <div class="flex items-center transition-colors group" :class="trackerRowClass(tracker)">
-          <button
-            @click="openTracker(tracker.id)"
-            class="flex-1 text-left px-4 py-3.5 font-medium flex items-center gap-1.5"
-          >
-            <span x-text="tracker.name"></span>
-            <span x-show="tracker.todayCount > 0" x-text="tracker.todayCount" class="text-xs font-semibold text-brand bg-brand/10 px-1.5 py-0.5 rounded-full tabular-nums"></span>
-            <span class="text-gray-300 group-hover:text-gray-400 transition-colors text-sm">→</span>
-          </button>
-          <div class="pr-3 pl-1 flex items-center gap-2 shrink-0">
-            <span
-              x-show="flashedTrackerId === tracker.id"
-              x-transition:enter="transition ease-out duration-150"
-              x-transition:enter-start="opacity-0"
-              x-transition:enter-end="opacity-100"
-              x-transition:leave="transition ease-in duration-300"
-              x-transition:leave-start="opacity-100"
-              x-transition:leave-end="opacity-0"
-              class="text-xs text-brand"
-            >Tracked!</span>
-<button
-              @click.stop="quickTrack(tracker.id)"
-              class="px-3 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand-dk active:scale-95 transition-all"
-            >Track</button>
+      <!-- Tracker list -->
+      <div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 mb-4 overflow-hidden">
+        <template x-if="trackers.length === 0">
+          <p class="px-4 py-6 text-center text-sm text-gray-400">No trackers yet.</p>
+        </template>
+        <template x-for="tracker in trackers" :key="tracker.id">
+          <div class="flex items-center transition-colors group" :class="trackerRowClass(tracker)">
+            <button
+              @click="$router.navigate('/trackers/' + tracker.id)"
+              class="flex-1 text-left px-4 py-3.5 font-medium flex items-center gap-1.5"
+            >
+              <span x-text="tracker.name"></span>
+              <span x-show="tracker.todayCount > 0" x-text="tracker.todayCount" class="text-xs font-semibold text-brand bg-brand/10 px-1.5 py-0.5 rounded-full tabular-nums"></span>
+              <span class="text-gray-300 group-hover:text-gray-400 transition-colors text-sm">→</span>
+            </button>
+            <div class="pr-3 pl-1 flex items-center gap-2 shrink-0">
+              <span
+                x-show="flashedTrackerId === tracker.id"
+                x-transition:enter="transition ease-out duration-150"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="transition ease-in duration-300"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                class="text-xs text-brand"
+              >Tracked!</span>
+              <button
+                @click.stop="quickTrack(tracker.id)"
+                class="px-3 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand-dk active:scale-95 transition-all"
+              >Track</button>
+            </div>
           </div>
-        </div>
-      </template>
-    </div>
+        </template>
+      </div>
 
-    <!-- New tracker -->
-    <div>
-      <button
-        x-show="!showNewTracker"
-        @click="showNewTracker = true; $nextTick(() => $refs.nameInput.focus())"
-        class="w-full py-2.5 rounded-xl border border-dashed border-gray-300 text-sm text-gray-500 hover:border-brand hover:text-brand transition-colors"
-      >
-        + New tracker
-      </button>
-
-      <form
-        x-show="showNewTracker"
-        x-transition
-        @submit.prevent="createTracker()"
-        class="flex gap-2"
-      >
-        <input
-          x-ref="nameInput"
-          x-model="newTrackerName"
-          type="text"
-          placeholder="Tracker name"
-          maxlength="40"
-          class="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-brand focus:border-transparent"
-          @keydown.escape="showNewTracker = false; newTrackerName = ''"
-        >
+      <!-- New tracker -->
+      <div>
         <button
-          type="submit"
-          :disabled="!newTrackerName.trim()"
-          class="px-4 py-2.5 bg-brand text-white text-sm font-semibold rounded-xl disabled:opacity-40 hover:bg-brand-dk transition-colors"
+          x-show="!showNewTracker"
+          @click="showNewTracker = true; $nextTick(() => $refs.nameInput.focus())"
+          class="w-full py-2.5 rounded-xl border border-dashed border-gray-300 text-sm text-gray-500 hover:border-brand hover:text-brand transition-colors"
         >
-          Create
+          + New tracker
         </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Tracker view -->
-  <div x-show="page === 'tracker'" x-transition class="max-w-md mx-auto px-4 py-10">
-    <div class="mb-6">
-      <button @click="goHome()" class="text-sm text-gray-400 hover:text-brand transition-colors mb-3">← trackr</button>
-
-      <!-- Normal display -->
-      <div x-show="!renaming && !confirmDelete" class="flex items-center gap-1 group">
-        <h1 class="text-2xl font-bold tracking-tight flex-1 min-w-0 truncate" x-text="currentTracker?.name"></h1>
-        <div class="flex items-center gap-0.5 shrink-0">
-          <button
-            @click="toggleGoal()"
-            :title="currentTracker?.goal === 'decrease' ? 'Goal: decrease — click to switch' : 'Goal: increase — click to switch'"
-            class="px-2 py-1 rounded-lg text-xs font-semibold tabular-nums text-gray-400 hover:bg-gray-100 transition-colors"
-            x-text="currentTracker?.goal === 'decrease' ? '↓ decrease' : '↑ increase'"
-          ></button>
-          <button @click="startRename()" title="Rename" class="p-1.5 rounded-lg text-gray-400 hover:text-brand hover:bg-gray-100 transition-colors">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-          </button>
-          <button @click="confirmDelete = true" title="Delete" class="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-          </button>
-        </div>
-      </div>
-      <!-- Daily goal setting -->
-      <div x-show="!renaming && !confirmDelete" class="flex items-center gap-1.5 mt-1">
-        <span class="text-xs text-gray-400">Daily goal</span>
-        <input
-          type="number"
-          min="1"
-          step="1"
-          :value="currentTracker?.countGoal ?? ''"
-          @change="saveCountGoal($event.target.value)"
-          @keydown.enter="$el.blur()"
-          placeholder="—"
-          class="w-10 text-center text-xs tabular-nums border-b border-gray-200 focus:outline-hidden focus:border-brand bg-transparent text-gray-600 placeholder-gray-300"
+        <form
+          x-show="showNewTracker"
+          x-transition
+          @submit.prevent="createTracker()"
+          class="flex gap-2"
         >
-      </div>
-
-      <!-- Delete confirm -->
-      <div x-show="confirmDelete" class="flex items-center gap-2">
-        <span class="text-lg font-bold tracking-tight text-gray-400 flex-1 min-w-0 truncate">Delete "<span x-text="currentTracker?.name"></span>"?</span>
-        <button @click="deleteTracker()" class="px-3 py-1.5 bg-red-500 text-white text-xs font-semibold rounded-lg hover:bg-red-600 transition-colors">Delete</button>
-        <button @click="confirmDelete = false" class="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">Cancel</button>
-      </div>
-
-      <!-- Rename form -->
-      <form x-show="renaming" @submit.prevent="saveRename()" class="flex items-center gap-2">
-        <input
-          x-ref="renameInput"
-          x-model="renameValue"
-          maxlength="40"
-          class="flex-1 min-w-0 text-2xl font-bold tracking-tight bg-transparent border-b-2 border-brand focus:outline-hidden"
-          @keydown.escape="renaming = false"
-        >
-        <button type="submit" :disabled="!renameValue.trim()" class="px-3 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg disabled:opacity-40 hover:bg-brand-dk transition-colors">Save</button>
-        <button type="button" @click="renaming = false" class="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">Cancel</button>
-      </form>
-    </div>
-
-    <!-- Track button -->
-    <div class="mb-8">
-      <button
-        @click="track()"
-        :disabled="tracking"
-        class="w-full py-7 bg-brand text-white text-xl font-bold rounded-2xl hover:bg-brand-dk active:scale-[0.98] transition-all disabled:opacity-50"
-      >
-        Track
-      </button>
-      <div class="h-6 mt-2 text-center">
-        <span
-          x-show="flashed"
-          x-transition:enter="transition ease-out duration-150"
-          x-transition:enter-start="opacity-0 scale-95"
-          x-transition:enter-end="opacity-100 scale-100"
-          x-transition:leave="transition ease-in duration-300"
-          x-transition:leave-start="opacity-100"
-          x-transition:leave-end="opacity-0"
-          class="text-sm font-medium text-brand"
-        >Tracked!</span>
-      </div>
-      <!-- Reason input, shown after tracking -->
-      <div x-show="lastTrackedEventId" x-transition class="mt-3">
-        <form @submit.prevent="saveEventReason(lastTrackedEventId, reasonValue)" class="flex gap-2">
           <input
+            x-ref="nameInput"
+            x-model="newTrackerName"
             type="text"
-            list="reason-list"
-            x-model="reasonValue"
-            placeholder="Add a reason (optional)"
-            @keydown.escape="lastTrackedEventId = null"
-            class="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand focus:border-transparent"
+            placeholder="Tracker name"
+            maxlength="40"
+            class="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-brand focus:border-transparent"
+            @keydown.escape="showNewTracker = false; newTrackerName = ''"
           >
-          <button type="submit" class="px-3 py-2 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dk transition-colors">Save</button>
-          <button type="button" @click="lastTrackedEventId = null" class="px-3 py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors">Skip</button>
+          <button
+            type="submit"
+            :disabled="!newTrackerName.trim()"
+            class="px-4 py-2.5 bg-brand text-white text-sm font-semibold rounded-xl disabled:opacity-40 hover:bg-brand-dk transition-colors"
+          >
+            Create
+          </button>
         </form>
       </div>
     </div>
+  </template>
 
-    <!-- Stats (only when there's data) -->
-    <template x-if="events.length > 0">
-      <div class="mb-6 space-y-3">
+  <template x-route="/trackers/:id" x-template>
+    <div x-data="trackerPage()" x-init="init()" class="max-w-md mx-auto px-4 py-10">
+      <div class="mb-6">
+        <button @click="$router.navigate('/')" class="text-sm text-gray-400 hover:text-brand transition-colors mb-3">← trackr</button>
 
-        <!-- Summary numbers -->
-        <div class="grid grid-cols-3 gap-3">
-          <div class="bg-white rounded-xl border border-gray-200 px-3 py-3 text-center">
-            <p class="text-2xl font-bold tracking-tight text-brand" x-text="totalEvents"></p>
-            <p class="text-xs text-gray-400 mt-0.5">total</p>
+        <!-- Normal display -->
+        <div x-show="!renaming && !confirmDelete" class="flex items-center gap-1 group">
+          <h1 class="text-2xl font-bold tracking-tight flex-1 min-w-0 truncate" x-text="currentTracker?.name"></h1>
+          <div class="flex items-center gap-0.5 shrink-0">
+            <button
+              @click="toggleGoal()"
+              :title="currentTracker?.goal === 'decrease' ? 'Goal: decrease — click to switch' : 'Goal: increase — click to switch'"
+              class="px-2 py-1 rounded-lg text-xs font-semibold tabular-nums text-gray-400 hover:bg-gray-100 transition-colors"
+              x-text="currentTracker?.goal === 'decrease' ? '↓ decrease' : '↑ increase'"
+            ></button>
+            <button @click="startRename()" title="Rename" class="p-1.5 rounded-lg text-gray-400 hover:text-brand hover:bg-gray-100 transition-colors">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            </button>
+            <button @click="confirmDelete = true" title="Delete" class="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            </button>
           </div>
-          <div class="bg-white rounded-xl border border-gray-200 px-3 py-3 text-center">
-            <p class="text-2xl font-bold tracking-tight text-brand" x-text="dailyAvg"></p>
-            <p class="text-xs text-gray-400 mt-0.5">avg / day</p>
-          </div>
-          <!-- Streak for increase, best day for decrease -->
-          <template x-if="currentTracker?.goal !== 'decrease'">
-            <div class="bg-white rounded-xl border border-gray-200 px-3 py-3 text-center">
-              <p class="text-2xl font-bold tracking-tight text-brand" x-text="streak ? streak + 'd' : '—'"></p>
-              <p class="text-xs text-gray-400 mt-0.5">streak</p>
-            </div>
-          </template>
-          <template x-if="currentTracker?.goal === 'decrease'">
-            <div class="bg-white rounded-xl border border-gray-200 px-3 py-3 text-center">
-              <p class="text-2xl font-bold tracking-tight text-brand" x-text="bestDay"></p>
-              <p class="text-xs text-gray-400 mt-0.5">best day</p>
-            </div>
-          </template>
+        </div>
+        <!-- Daily goal setting -->
+        <div x-show="!renaming && !confirmDelete" class="flex items-center gap-1.5 mt-1">
+          <span class="text-xs text-gray-400">Daily goal</span>
+          <input
+            type="number"
+            min="1"
+            step="1"
+            :value="currentTracker?.countGoal ?? ''"
+            @change="saveCountGoal($event.target.value)"
+            @keydown.enter="$el.blur()"
+            placeholder="—"
+            class="w-10 text-center text-xs tabular-nums border-b border-gray-200 focus:outline-hidden focus:border-brand bg-transparent text-gray-600 placeholder-gray-300"
+          >
         </div>
 
-        <!-- Hourly histogram -->
-        <div class="bg-white rounded-xl border border-gray-200 p-4">
-          <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4" x-text="currentTracker?.goal === 'decrease' ? 'Risk hours' : 'By hour'"></p>
-          <div class="flex items-end gap-2 overflow-x-auto pb-1">
-            <template x-for="h in hourlyDist" :key="h.hour">
-              <div class="flex flex-col items-center gap-1 shrink-0">
-                <span class="text-xs text-gray-400 tabular-nums" x-text="h.count"></span>
-                <div class="bg-brand rounded-t w-7" :style="`height: ${Math.round((h.count / hourlyMax) * 56)}px`"></div>
-                <span class="text-xs text-gray-400 tabular-nums" x-text="formatHour(h.hour)"></span>
+        <!-- Delete confirm -->
+        <div x-show="confirmDelete" class="flex items-center gap-2">
+          <span class="text-lg font-bold tracking-tight text-gray-400 flex-1 min-w-0 truncate">Delete "<span x-text="currentTracker?.name"></span>"?</span>
+          <button @click="deleteTracker()" class="px-3 py-1.5 bg-red-500 text-white text-xs font-semibold rounded-lg hover:bg-red-600 transition-colors">Delete</button>
+          <button @click="confirmDelete = false" class="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">Cancel</button>
+        </div>
+
+        <!-- Rename form -->
+        <form x-show="renaming" @submit.prevent="saveRename()" class="flex items-center gap-2">
+          <input
+            x-ref="renameInput"
+            x-model="renameValue"
+            maxlength="40"
+            class="flex-1 min-w-0 text-2xl font-bold tracking-tight bg-transparent border-b-2 border-brand focus:outline-hidden"
+            @keydown.escape="renaming = false"
+          >
+          <button type="submit" :disabled="!renameValue.trim()" class="px-3 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg disabled:opacity-40 hover:bg-brand-dk transition-colors">Save</button>
+          <button type="button" @click="renaming = false" class="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">Cancel</button>
+        </form>
+      </div>
+
+      <!-- Track button -->
+      <div class="mb-8">
+        <button
+          @click="track()"
+          :disabled="tracking"
+          class="w-full py-7 bg-brand text-white text-xl font-bold rounded-2xl hover:bg-brand-dk active:scale-[0.98] transition-all disabled:opacity-50"
+        >
+          Track
+        </button>
+        <div class="h-6 mt-2 text-center">
+          <span
+            x-show="flashed"
+            x-transition:enter="transition ease-out duration-150"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-300"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            class="text-sm font-medium text-brand"
+          >Tracked!</span>
+        </div>
+        <!-- Reason input, shown after tracking -->
+        <div x-show="lastTrackedEventId" x-transition class="mt-3">
+          <form @submit.prevent="saveEventReason(lastTrackedEventId, reasonValue)" class="flex gap-2">
+            <input
+              type="text"
+              list="reason-list"
+              x-model="reasonValue"
+              placeholder="Add a reason (optional)"
+              @keydown.escape="lastTrackedEventId = null"
+              class="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand focus:border-transparent"
+            >
+            <button type="submit" class="px-3 py-2 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dk transition-colors">Save</button>
+            <button type="button" @click="lastTrackedEventId = null" class="px-3 py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors">Skip</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Stats (only when there's data) -->
+      <template x-if="events.length > 0">
+        <div class="mb-6 space-y-3">
+
+          <!-- Summary numbers -->
+          <div class="grid grid-cols-3 gap-3">
+            <div class="bg-white rounded-xl border border-gray-200 px-3 py-3 text-center">
+              <p class="text-2xl font-bold tracking-tight text-brand" x-text="totalEvents"></p>
+              <p class="text-xs text-gray-400 mt-0.5">total</p>
+            </div>
+            <div class="bg-white rounded-xl border border-gray-200 px-3 py-3 text-center">
+              <p class="text-2xl font-bold tracking-tight text-brand" x-text="dailyAvg"></p>
+              <p class="text-xs text-gray-400 mt-0.5">avg / day</p>
+            </div>
+            <template x-if="currentTracker?.goal !== 'decrease'">
+              <div class="bg-white rounded-xl border border-gray-200 px-3 py-3 text-center">
+                <p class="text-2xl font-bold tracking-tight text-brand" x-text="streak ? streak + 'd' : '—'"></p>
+                <p class="text-xs text-gray-400 mt-0.5">streak</p>
+              </div>
+            </template>
+            <template x-if="currentTracker?.goal === 'decrease'">
+              <div class="bg-white rounded-xl border border-gray-200 px-3 py-3 text-center">
+                <p class="text-2xl font-bold tracking-tight text-brand" x-text="bestDay"></p>
+                <p class="text-xs text-gray-400 mt-0.5">best day</p>
               </div>
             </template>
           </div>
-        </div>
 
-        <!-- Day-of-week histogram -->
-        <div class="bg-white rounded-xl border border-gray-200 p-4">
-          <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4" x-text="currentTracker?.goal === 'decrease' ? 'Hardest days' : 'By day of week'"></p>
-          <div class="flex items-end gap-2 overflow-x-auto pb-1">
-            <template x-for="d in dowDist" :key="d.dow">
-              <div class="flex flex-col items-center gap-1 shrink-0">
-                <span class="text-xs text-gray-400 tabular-nums" x-text="d.count"></span>
-                <div class="bg-brand rounded-t w-7" :style="`height: ${Math.round((d.count / dowMax) * 56)}px`"></div>
-                <span class="text-xs text-gray-400" x-text="d.label"></span>
-              </div>
-            </template>
-          </div>
-        </div>
-
-        <!-- By reason -->
-        <template x-if="reasonDist.length > 0">
+          <!-- Hourly histogram -->
           <div class="bg-white rounded-xl border border-gray-200 p-4">
-            <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">By reason</p>
-            <div class="space-y-2">
-              <template x-for="r in reasonDist" :key="r.reason">
-                <div class="flex items-center gap-2">
-                  <span class="text-xs text-gray-500 truncate shrink-0 w-28" x-text="r.reason"></span>
-                  <div class="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                    <div class="bg-brand h-full rounded-full" :style="`width: ${r.count / reasonMax * 100}%`"></div>
+            <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4" x-text="currentTracker?.goal === 'decrease' ? 'Risk hours' : 'By hour'"></p>
+            <div class="flex items-end gap-2 overflow-x-auto pb-1">
+              <template x-for="h in hourlyDist" :key="h.hour">
+                <div class="flex flex-col items-center gap-1 shrink-0">
+                  <span class="text-xs text-gray-400 tabular-nums" x-text="h.count"></span>
+                  <div class="bg-brand rounded-t w-7" :style="`height: ${Math.round((h.count / hourlyMax) * 56)}px`"></div>
+                  <span class="text-xs text-gray-400 tabular-nums" x-text="formatHour(h.hour)"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Day-of-week histogram -->
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4" x-text="currentTracker?.goal === 'decrease' ? 'Hardest days' : 'By day of week'"></p>
+            <div class="flex items-end gap-2 overflow-x-auto pb-1">
+              <template x-for="d in dowDist" :key="d.dow">
+                <div class="flex flex-col items-center gap-1 shrink-0">
+                  <span class="text-xs text-gray-400 tabular-nums" x-text="d.count"></span>
+                  <div class="bg-brand rounded-t w-7" :style="`height: ${Math.round((d.count / dowMax) * 56)}px`"></div>
+                  <span class="text-xs text-gray-400" x-text="d.label"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- By reason -->
+          <template x-if="reasonDist.length > 0">
+            <div class="bg-white rounded-xl border border-gray-200 p-4">
+              <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">By reason</p>
+              <div class="space-y-2">
+                <template x-for="r in reasonDist" :key="r.reason">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs text-gray-500 truncate shrink-0 w-28" x-text="r.reason"></span>
+                    <div class="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                      <div class="bg-brand h-full rounded-full" :style="`width: ${r.count / reasonMax * 100}%`"></div>
+                    </div>
+                    <span class="text-xs tabular-nums text-gray-400 shrink-0 w-5 text-right" x-text="r.count"></span>
                   </div>
-                  <span class="text-xs tabular-nums text-gray-400 shrink-0 w-5 text-right" x-text="r.count"></span>
+                </template>
+              </div>
+            </div>
+          </template>
+
+        </div>
+      </template>
+
+      <!-- Events by day -->
+      <div class="space-y-3">
+        <template x-if="events.length === 0">
+          <p class="text-center text-sm text-gray-400 py-4">No events yet. Hit Track!</p>
+        </template>
+
+        <template x-for="group in events" :key="group.day">
+          <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div class="px-4 pt-3 pb-2">
+              <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-0.5" x-text="formatDay(group.day)"></p>
+              <p class="text-3xl font-bold tracking-tight text-brand" x-text="group.count"></p>
+              <p class="text-xs text-gray-400" x-text="group.count === 1 ? 'event' : 'events'"></p>
+            </div>
+            <div class="border-t border-gray-100 divide-y divide-gray-100">
+              <template x-for="hg in hourGroups(group)" :key="hg.hour">
+                <div>
+                  <button
+                    @click="toggleHour(group.day + '-' + hg.hour)"
+                    class="w-full px-4 py-1.5 flex items-center justify-between hover:bg-cream-dk transition-colors"
+                  >
+                    <span class="text-sm tabular-nums text-gray-400 font-medium" x-text="hg.hour + ':xx'"></span>
+                    <span class="flex items-center gap-1.5 text-xs text-gray-400">
+                      <span x-text="hg.times.length + (hg.times.length === 1 ? ' entry' : ' entries')"></span>
+                      <span x-text="expandedHours[group.day + '-' + hg.hour] ? '▴' : '▾'"></span>
+                    </span>
+                  </button>
+                  <template x-if="expandedHours[group.day + '-' + hg.hour]">
+                    <div class="border-t border-gray-100 divide-y divide-gray-100 bg-cream">
+                      <template x-for="t in hg.times" :key="t.id">
+                        <div class="px-6 pt-1.5 pb-1 group/entry">
+                          <div class="flex items-center justify-between">
+                            <span class="text-sm tabular-nums text-gray-400" x-text="t.time"></span>
+                            <button @click="deleteEvent(t.id)" class="text-gray-300 hover:text-red-400 opacity-0 group-hover/entry:opacity-100 transition-opacity text-xs leading-none">×</button>
+                          </div>
+                          <div x-show="editingReasonId === t.id" class="mt-1.5 flex gap-1.5">
+                            <input type="text" list="reason-list" x-model="editingReasonValue" placeholder="reason" @keydown.escape="editingReasonId = null" @keydown.enter.prevent="saveEventReason(t.id, editingReasonValue)" class="flex-1 text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-brand bg-white">
+                            <button @click="saveEventReason(t.id, editingReasonValue)" class="px-2 py-1 bg-brand text-white text-xs rounded-lg hover:bg-brand-dk">✓</button>
+                            <button @click="editingReasonId = null" class="px-2 py-1 text-gray-400 text-xs hover:text-gray-600">✕</button>
+                          </div>
+                          <div x-show="editingReasonId !== t.id">
+                            <p x-show="t.reason" @click="editingReasonId = t.id; editingReasonValue = t.reason" class="text-xs text-gray-400 hover:text-gray-600 cursor-pointer mt-0.5 truncate" x-text="t.reason"></p>
+                            <p x-show="!t.reason" @click="editingReasonId = t.id; editingReasonValue = ''" class="text-xs text-gray-300 opacity-0 group-hover/entry:opacity-100 hover:text-gray-500 cursor-pointer mt-0.5 transition-opacity">reason?</p>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </template>
+              <template x-for="t in detailTimes(group)" :key="t.id">
+                <div class="px-4 pt-1.5 pb-1 group/entry">
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm tabular-nums text-gray-500" x-text="t.time"></span>
+                    <button @click="deleteEvent(t.id)" class="text-gray-300 hover:text-red-400 opacity-0 group-hover/entry:opacity-100 transition-opacity text-xs leading-none">×</button>
+                  </div>
+                  <div x-show="editingReasonId === t.id" class="mt-1.5 flex gap-1.5">
+                    <input type="text" list="reason-list" x-model="editingReasonValue" placeholder="reason" @keydown.escape="editingReasonId = null" @keydown.enter.prevent="saveEventReason(t.id, editingReasonValue)" class="flex-1 text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-brand">
+                    <button @click="saveEventReason(t.id, editingReasonValue)" class="px-2 py-1 bg-brand text-white text-xs rounded-lg hover:bg-brand-dk">✓</button>
+                    <button @click="editingReasonId = null" class="px-2 py-1 text-gray-400 text-xs hover:text-gray-600">✕</button>
+                  </div>
+                  <div x-show="editingReasonId !== t.id">
+                    <p x-show="t.reason" @click="editingReasonId = t.id; editingReasonValue = t.reason" class="text-xs text-gray-400 hover:text-gray-600 cursor-pointer mt-0.5 truncate" x-text="t.reason"></p>
+                    <p x-show="!t.reason" @click="editingReasonId = t.id; editingReasonValue = ''" class="text-xs text-gray-300 opacity-0 group-hover/entry:opacity-100 hover:text-gray-500 cursor-pointer mt-0.5 transition-opacity">reason?</p>
+                  </div>
                 </div>
               </template>
             </div>
           </div>
         </template>
-
       </div>
-    </template>
 
-    <!-- Events by day -->
-    <div class="space-y-3">
-      <template x-if="events.length === 0">
-        <p class="text-center text-sm text-gray-400 py-4">No events yet. Hit Track!</p>
-      </template>
-
-      <template x-for="group in events" :key="group.day">
-        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div class="px-4 pt-3 pb-2">
-            <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-0.5" x-text="formatDay(group.day)"></p>
-            <p class="text-3xl font-bold tracking-tight text-brand" x-text="group.count"></p>
-            <p class="text-xs text-gray-400" x-text="group.count === 1 ? 'event' : 'events'"></p>
-          </div>
-          <div class="border-t border-gray-100 divide-y divide-gray-100">
-            <!-- Hour aggregates for entries older than the last 3 -->
-            <template x-for="hg in hourGroups(group)" :key="hg.hour">
-              <div>
-                <button
-                  @click="toggleHour(group.day + '-' + hg.hour)"
-                  class="w-full px-4 py-1.5 flex items-center justify-between hover:bg-cream-dk transition-colors"
-                >
-                  <span class="text-sm tabular-nums text-gray-400 font-medium" x-text="hg.hour + ':xx'"></span>
-                  <span class="flex items-center gap-1.5 text-xs text-gray-400">
-                    <span x-text="hg.times.length + (hg.times.length === 1 ? ' entry' : ' entries')"></span>
-                    <span x-text="expandedHours[group.day + '-' + hg.hour] ? '▴' : '▾'"></span>
-                  </span>
-                </button>
-                <template x-if="expandedHours[group.day + '-' + hg.hour]">
-                  <div class="border-t border-gray-100 divide-y divide-gray-100 bg-cream">
-                    <template x-for="t in hg.times" :key="t.id">
-                      <div class="px-6 pt-1.5 pb-1 group/entry">
-                        <div class="flex items-center justify-between">
-                          <span class="text-sm tabular-nums text-gray-400" x-text="t.time"></span>
-                          <button @click="deleteEvent(t.id)" class="text-gray-300 hover:text-red-400 opacity-0 group-hover/entry:opacity-100 transition-opacity text-xs leading-none">×</button>
-                        </div>
-                        <div x-show="editingReasonId === t.id" class="mt-1.5 flex gap-1.5">
-                          <input type="text" list="reason-list" x-model="editingReasonValue" placeholder="reason" @keydown.escape="editingReasonId = null" @keydown.enter.prevent="saveEventReason(t.id, editingReasonValue)" class="flex-1 text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-brand bg-white">
-                          <button @click="saveEventReason(t.id, editingReasonValue)" class="px-2 py-1 bg-brand text-white text-xs rounded-lg hover:bg-brand-dk">✓</button>
-                          <button @click="editingReasonId = null" class="px-2 py-1 text-gray-400 text-xs hover:text-gray-600">✕</button>
-                        </div>
-                        <div x-show="editingReasonId !== t.id">
-                          <p x-show="t.reason" @click="editingReasonId = t.id; editingReasonValue = t.reason" class="text-xs text-gray-400 hover:text-gray-600 cursor-pointer mt-0.5 truncate" x-text="t.reason"></p>
-                          <p x-show="!t.reason" @click="editingReasonId = t.id; editingReasonValue = ''" class="text-xs text-gray-300 opacity-0 group-hover/entry:opacity-100 hover:text-gray-500 cursor-pointer mt-0.5 transition-opacity">reason?</p>
-                        </div>
-                      </div>
-                    </template>
-                  </div>
-                </template>
-              </div>
-            </template>
-            <!-- Last 3 (or all, if ≤ 3) shown individually -->
-            <template x-for="t in detailTimes(group)" :key="t.id">
-              <div class="px-4 pt-1.5 pb-1 group/entry">
-                <div class="flex items-center justify-between">
-                  <span class="text-sm tabular-nums text-gray-500" x-text="t.time"></span>
-                  <button @click="deleteEvent(t.id)" class="text-gray-300 hover:text-red-400 opacity-0 group-hover/entry:opacity-100 transition-opacity text-xs leading-none">×</button>
-                </div>
-                <div x-show="editingReasonId === t.id" class="mt-1.5 flex gap-1.5">
-                  <input type="text" list="reason-list" x-model="editingReasonValue" placeholder="reason" @keydown.escape="editingReasonId = null" @keydown.enter.prevent="saveEventReason(t.id, editingReasonValue)" class="flex-1 text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-brand">
-                  <button @click="saveEventReason(t.id, editingReasonValue)" class="px-2 py-1 bg-brand text-white text-xs rounded-lg hover:bg-brand-dk">✓</button>
-                  <button @click="editingReasonId = null" class="px-2 py-1 text-gray-400 text-xs hover:text-gray-600">✕</button>
-                </div>
-                <div x-show="editingReasonId !== t.id">
-                  <p x-show="t.reason" @click="editingReasonId = t.id; editingReasonValue = t.reason" class="text-xs text-gray-400 hover:text-gray-600 cursor-pointer mt-0.5 truncate" x-text="t.reason"></p>
-                  <p x-show="!t.reason" @click="editingReasonId = t.id; editingReasonValue = ''" class="text-xs text-gray-300 opacity-0 group-hover/entry:opacity-100 hover:text-gray-500 cursor-pointer mt-0.5 transition-opacity">reason?</p>
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
-      </template>
+      <datalist id="reason-list">
+        <template x-for="r in historicReasons" :key="r.reason">
+          <option :value="r.reason"></option>
+        </template>
+      </datalist>
     </div>
-  </div>
+  </template>
 
-  </div><!-- end authState === 'app' -->
+  <template x-route="/admin" x-template>
+    <div x-data="admin()" x-init="init()" class="max-w-md mx-auto px-4 py-10">
+      <button @click="$router.navigate('/')" class="text-sm text-gray-400 hover:text-brand transition-colors mb-6">← trackr</button>
+      <h2 class="text-xl font-bold tracking-tight mb-6">User management</h2>
 
-  <datalist id="reason-list">
-    <template x-for="r in historicReasons" :key="r.reason">
-      <option :value="r.reason"></option>
-    </template>
-  </datalist>
+      <!-- Add user form -->
+      <div class="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+        <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Add user</p>
+        <form @submit.prevent="addUser()" class="space-y-2">
+          <input x-model="newUserUsername" type="text" placeholder="Username" autocomplete="off"
+            class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-brand focus:border-transparent">
+          <input x-model="newUserPassword" type="password" placeholder="Password" autocomplete="new-password"
+            class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-brand focus:border-transparent">
+          <div class="flex items-center justify-between pt-1">
+            <p x-show="newUserError" x-text="newUserError" class="text-xs text-red-500"></p>
+            <button type="submit" :disabled="!newUserUsername.trim() || !newUserPassword"
+              class="ml-auto px-4 py-2 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dk disabled:opacity-40 transition-colors">
+              Add user
+            </button>
+          </div>
+        </form>
+      </div>
 
-  <script>
-    function app() {
-      return {
-        page: 'home',
-        trackers: [],
-        currentTracker: null,
-        events: [],
-        newTrackerName: '',
-        showNewTracker: false,
-        flashed: false,
-        flashedTrackerId: null,
-        tracking: false,
-        renaming: false,
-        renameValue: '',
-        confirmDelete: false,
-        expandedHours: {},
-        totalEvents: 0,
-        dailyAvg: '0',
-        streak: 0,
-        bestDay: 0,
-        hourlyDist: [],
-        hourlyMax: 1,
-        dowDist: [],
-        dowMax: 1,
-        reasonDist: [],
-        reasonMax: 1,
-        lastTrackedEventId: null,
-        reasonValue: '',
-        historicReasons: [],
-        editingReasonId: null,
-        editingReasonValue: '',
+      <!-- User list -->
+      <div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+        <template x-for="user in adminUsers" :key="user.id">
+          <div class="px-4 py-3">
+            <div class="flex items-center justify-between gap-3 min-w-0">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="font-medium text-sm truncate" x-text="user.username"></span>
+                <span class="text-xs px-1.5 py-0.5 rounded-md font-medium shrink-0"
+                  :class="user.role === 'admin' ? 'bg-brand/10 text-brand' : 'bg-gray-100 text-gray-500'"
+                  x-text="user.role"></span>
+                <span x-show="user.id === $store.auth.user?.id" class="text-xs text-gray-300 shrink-0">(you)</span>
+              </div>
+              <div x-show="user.id !== $store.auth.user?.id" class="flex items-center gap-1 shrink-0">
+                <button @click="toggleRole(user)"
+                  class="px-2.5 py-1 text-xs text-gray-500 hover:text-brand hover:bg-gray-100 rounded-lg transition-colors"
+                  x-text="user.role === 'admin' ? 'Make user' : 'Make admin'"></button>
+                <button @click="resetPasswordUserId === user.id ? resetPasswordUserId = null : (resetPasswordUserId = user.id, resetPasswordValue = '')"
+                  class="px-2.5 py-1 text-xs text-gray-500 hover:text-brand hover:bg-gray-100 rounded-lg transition-colors">Reset PW</button>
+                <button @click="removeUser(user.id)"
+                  class="px-2.5 py-1 text-xs text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">Delete</button>
+              </div>
+            </div>
+            <!-- Inline password reset form -->
+            <form x-show="resetPasswordUserId === user.id" class="mt-2 flex gap-2" @submit.prevent="resetPassword(user.id)">
+              <input type="password" x-model="resetPasswordValue" placeholder="New password"
+                autocomplete="new-password"
+                @keydown.escape="resetPasswordUserId = null"
+                class="flex-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-brand">
+              <button type="submit" :disabled="!resetPasswordValue"
+                class="px-3 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand-dk disabled:opacity-40 transition-colors">Set</button>
+              <button type="button" @click="resetPasswordUserId = null"
+                class="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors">Cancel</button>
+            </form>
+          </div>
+        </template>
+      </div>
+    </div>
+  </template>
 
-        // Auth
-        authState: 'loading',
-        currentUser: null,
-        loginUsername: '',
-        loginPassword: '',
-        loginError: '',
-        setupUsername: '',
-        setupPassword: '',
-        setupError: '',
+  <template x-route="notfound" x-handler="notFound"></template>
 
-        // Admin
-        adminUsers: [],
-        newUserUsername: '',
-        newUserPassword: '',
-        newUserError: '',
-        resetPasswordUserId: null,
-        resetPasswordValue: '',
+  <!-- Route outlet -->
+  <div id="app" x-show="authState === 'app'"></div>
 
-        async init() {
-          const res = await fetch('/api/me');
-          const me = await res.json();
-          if (me.setupRequired) {
-            this.authState = 'setup';
-          } else if (me.authenticated) {
-            this.currentUser = me;
-            this.authState = 'app';
-            await this.loadTrackers();
-          } else {
-            this.authState = 'login';
-          }
-        },
-
-        async login() {
-          this.loginError = '';
-          const res = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: this.loginUsername, password: this.loginPassword }),
-          });
-          const body = await res.json();
-          if (!res.ok) { this.loginError = body.error || 'Login failed'; return; }
-          this.currentUser = body;
-          this.loginUsername = '';
-          this.loginPassword = '';
-          this.authState = 'app';
-          await this.loadTrackers();
-        },
-
-        async setup() {
-          this.setupError = '';
-          const res = await fetch('/api/setup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: this.setupUsername, password: this.setupPassword }),
-          });
-          const body = await res.json();
-          if (!res.ok) { this.setupError = body.error || 'Setup failed'; return; }
-          this.currentUser = body;
-          this.setupUsername = '';
-          this.setupPassword = '';
-          this.authState = 'app';
-          await this.loadTrackers();
-        },
-
-        async logout() {
-          await fetch('/api/logout', { method: 'POST' });
-          this.currentUser = null;
-          this.trackers = [];
-          this.events = [];
-          this.page = 'home';
-          this.authState = 'login';
-        },
-
-        async openAdmin() {
-          const res = await fetch('/api/admin/users');
-          this.adminUsers = await res.json();
-          this.newUserUsername = '';
-          this.newUserPassword = '';
-          this.newUserError = '';
-          this.resetPasswordUserId = null;
-          this.page = 'admin';
-        },
-
-        async addUser() {
-          this.newUserError = '';
-          const res = await fetch('/api/admin/users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: this.newUserUsername.trim(), password: this.newUserPassword }),
-          });
-          const body = await res.json();
-          if (!res.ok) { this.newUserError = body.error || 'Failed to add user'; return; }
-          this.newUserUsername = '';
-          this.newUserPassword = '';
-          this.adminUsers.push(body);
-        },
-
-        async removeUser(userId) {
-          await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
-          this.adminUsers = this.adminUsers.filter(u => u.id !== userId);
-        },
-
-        async toggleRole(user) {
-          const role = user.role === 'admin' ? 'user' : 'admin';
-          await fetch(`/api/admin/users/${user.id}/role`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ role }),
-          });
-          user.role = role;
-        },
-
-        async resetPassword(userId) {
-          if (!this.resetPasswordValue) return;
-          await fetch(`/api/admin/users/${userId}/password`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: this.resetPasswordValue }),
-          });
-          this.resetPasswordUserId = null;
-          this.resetPasswordValue = '';
-        },
-
-        async loadTrackers() {
-          const date = new Date().toLocaleDateString('en-CA');
-          const res = await fetch(`/api/trackers?date=${date}`);
-          this.trackers = await res.json();
-        },
-
-        async createTracker() {
-          const name = this.newTrackerName.trim();
-          if (!name) return;
-          const res = await fetch('/api/trackers', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name }),
-          });
-          const tracker = await res.json();
-          this.newTrackerName = '';
-          this.showNewTracker = false;
-          await this.openTracker(tracker.id);
-        },
-
-        async openTracker(id) {
-          const res = await fetch(`/api/trackers/${id}`);
-          this.currentTracker = await res.json();
-          await this.loadEvents();
-          await this.loadHistoricReasons();
-          this.lastTrackedEventId = null;
-          this.reasonValue = '';
-          this.editingReasonId = null;
-          this.renaming = false;
-          this.confirmDelete = false;
-          this.page = 'tracker';
-        },
-
-        startRename() {
-          this.confirmDelete = false;
-          this.renameValue = this.currentTracker.name;
-          this.renaming = true;
-          this.$nextTick(() => this.$refs.renameInput.focus());
-        },
-
-        async saveRename() {
-          const name = this.renameValue.trim();
-          if (!name) return;
-          await fetch(`/api/trackers/${this.currentTracker.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name }),
-          });
-          this.currentTracker = { ...this.currentTracker, name };
-          this.renaming = false;
-        },
-
-        async deleteTracker() {
-          await fetch(`/api/trackers/${this.currentTracker.id}`, { method: 'DELETE' });
-          await this.goHome();
-        },
-
-        async loadEvents() {
-          const res = await fetch(`/api/trackers/${this.currentTracker.id}/events`);
-          this.events = this.groupEventsByLocalDay(await res.json());
-          this.computeStats();
-        },
-
-        groupEventsByLocalDay(events) {
-          const map = new Map();
-          for (const { id, trackedAt, reason } of events) {
-            const d = new Date(trackedAt);
-            const day = d.toLocaleDateString('en-CA');
-            if (!map.has(day)) map.set(day, []);
-            const hh = d.getHours(), mm = d.getMinutes(), ss = d.getSeconds();
-            map.get(day).push({
-              id,
-              time: `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`,
-              hour: hh,
-              reason,
-            });
-          }
-          return Array.from(map.entries())
-            .sort((a, b) => b[0].localeCompare(a[0]))
-            .map(([day, times]) => ({ day, count: times.length, times }));
-        },
-
-        async loadHistoricReasons() {
-          const res = await fetch(`/api/trackers/${this.currentTracker.id}/events/reasons`);
-          this.historicReasons = await res.json();
-        },
-
-        async saveEventReason(eventId, reason) {
-          const r = (reason ?? '').trim() || null;
-          await fetch(`/api/trackers/${this.currentTracker.id}/events/${eventId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reason: r }),
-          });
-          this.lastTrackedEventId = null;
-          this.editingReasonId = null;
-          await this.loadEvents();
-          await this.loadHistoricReasons();
-        },
-
-        computeStats() {
-          this.totalEvents = this.events.reduce((sum, g) => sum + g.count, 0);
-
-          this.dailyAvg = this.events.length
-            ? String(parseFloat((this.totalEvents / this.events.length).toFixed(1)))
-            : '0';
-
-          this.bestDay = this.events.length ? Math.min(...this.events.map(e => e.count)) : 0;
-
-          this.streak = (() => {
-            if (!this.events.length) return 0;
-            const days = this.events.map(e => e.day);
-            const today = new Date().toLocaleDateString('en-CA');
-            const yd = new Date(); yd.setDate(yd.getDate() - 1);
-            const yesterday = yd.toLocaleDateString('en-CA');
-            if (days[0] !== today && days[0] !== yesterday) return 0;
-            let count = 0;
-            let expected = days[0];
-            for (const day of days) {
-              if (day !== expected) break;
-              count++;
-              const d = new Date(expected + 'T12:00:00');
-              d.setDate(d.getDate() - 1);
-              expected = d.toISOString().slice(0, 10);
-            }
-            return count;
-          })();
-
-          const reasonMap = {};
-          const hourMap = {};
-          for (const group of this.events) {
-            for (const { hour, reason } of group.times) {
-              hourMap[hour] = (hourMap[hour] || 0) + 1;
-              if (reason) reasonMap[reason] = (reasonMap[reason] || 0) + 1;
-            }
-          }
-          this.hourlyDist = Object.entries(hourMap)
-            .map(([h, count]) => ({ hour: parseInt(h), count }))
-            .sort((a, b) => a.hour - b.hour);
-          this.hourlyMax = this.hourlyDist.length ? Math.max(...this.hourlyDist.map(h => h.count)) : 1;
-
-          const dowNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-          const dowMap = {};
-          for (const group of this.events) {
-            const dow = new Date(group.day + 'T12:00:00').getDay();
-            dowMap[dow] = (dowMap[dow] || 0) + group.count;
-          }
-          this.dowDist = Object.entries(dowMap)
-            .map(([dow, count]) => ({ dow: parseInt(dow), label: dowNames[parseInt(dow)], count }))
-            .sort((a, b) => a.dow - b.dow);
-          this.dowMax = this.dowDist.length ? Math.max(...this.dowDist.map(d => d.count)) : 1;
-
-          this.reasonDist = Object.entries(reasonMap)
-            .map(([reason, count]) => ({ reason, count }))
-            .sort((a, b) => b.count - a.count);
-          this.reasonMax = this.reasonDist.length ? Math.max(...this.reasonDist.map(r => r.count)) : 1;
-        },
-
-        async toggleGoal() {
-          const goal = this.currentTracker.goal === 'decrease' ? 'increase' : 'decrease';
-          await fetch(`/api/trackers/${this.currentTracker.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ goal }),
-          });
-          this.currentTracker = { ...this.currentTracker, goal };
-          this.computeStats();
-        },
-
-        async quickTrack(trackerId) {
-          await fetch(`/api/trackers/${trackerId}/events`, { method: 'POST' });
-          this.flashedTrackerId = trackerId;
-          await this.loadTrackers();
-          setTimeout(() => { this.flashedTrackerId = null; }, 1200);
-        },
-
-        async track() {
-          this.tracking = true;
-          try {
-            const res = await fetch(`/api/trackers/${this.currentTracker.id}/events`, { method: 'POST' });
-            const { id: eventId } = await res.json();
-            await this.loadEvents();
-            this.lastTrackedEventId = eventId;
-            this.reasonValue = '';
-            this.flashed = true;
-            setTimeout(() => { this.flashed = false; }, 1200);
-          } finally {
-            this.tracking = false;
-          }
-        },
-
-        async saveCountGoal(val) {
-          const countGoal = val === '' ? null : parseInt(val);
-          if (countGoal !== null && (isNaN(countGoal) || countGoal < 1)) return;
-          await fetch(`/api/trackers/${this.currentTracker.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ countGoal }),
-          });
-          this.currentTracker = { ...this.currentTracker, countGoal };
-          await this.loadTrackers();
-        },
-
-        trackerRowClass(tracker) {
-          if (tracker.countGoal && tracker.goal === 'increase' && tracker.todayCount >= tracker.countGoal)
-            return 'bg-green-50 hover:bg-green-100';
-          if (tracker.countGoal && tracker.goal === 'decrease' && tracker.todayCount > tracker.countGoal)
-            return 'bg-red-50 hover:bg-red-100';
-          return 'hover:bg-cream-dk';
-        },
-
-        async deleteEvent(eventId) {
-          await fetch(`/api/trackers/${this.currentTracker.id}/events/${eventId}`, { method: 'DELETE' });
-          await this.loadEvents();
-        },
-
-        async goHome() {
-          this.page = 'home';
-          await this.loadTrackers();
-        },
-
-        formatHour(h) {
-          return new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).format(new Date(2000, 0, 1, h));
-        },
-
-        hourGroups(group) {
-          if (group.times.length <= 3) return [];
-          const older = group.times.slice(0, -3);
-          const map = {};
-          for (const t of older) {
-            const h = String(t.hour).padStart(2, '0');
-            (map[h] ??= []).push(t);
-          }
-          return Object.entries(map).map(([hour, times]) => ({ hour, times }));
-        },
-
-        detailTimes(group) {
-          return group.times.length <= 3 ? group.times : group.times.slice(-3);
-        },
-
-        toggleHour(key) {
-          this.expandedHours[key] = !this.expandedHours[key];
-        },
-
-        formatDay(day) {
-          const today = new Date().toLocaleDateString('en-CA');
-          const yd = new Date(); yd.setDate(yd.getDate() - 1);
-          const yesterday = yd.toLocaleDateString('en-CA');
-          if (day === today) return 'Today';
-          if (day === yesterday) return 'Yesterday';
-          return new Date(day + 'T12:00:00').toLocaleDateString(undefined, {
-            weekday: 'long', month: 'long', day: 'numeric',
-          });
-        },
-      };
-    }
-  </script>
   <script>
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
   </script>
+  <script defer src="/pinecone-router.min.js"></script>
+  <script defer src="/js/auth.js"></script>
+  <script defer src="/js/home.js"></script>
+  <script defer src="/js/tracker.js"></script>
+  <script defer src="/js/admin.js"></script>
   <script defer src="/alpinejs.min.js"></script>
 </body>
 </html>

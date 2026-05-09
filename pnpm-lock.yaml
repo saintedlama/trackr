@@ -24,6 +24,9 @@ importers:
       alpinejs:
         specifier: ^3.15.12
         version: 3.15.12
+      pinecone-router:
+        specifier: ^7.5.0
+        version: 7.5.0
 
 packages:
 
@@ -533,6 +536,9 @@ packages:
   picomatch@4.0.4:
     resolution: {integrity: sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A==}
     engines: {node: '>=12'}
+
+  pinecone-router@7.5.0:
+    resolution: {integrity: sha512-yF5blXk42ou8d7HTJICbBlli0J23FdYLgNTwekjpLEcVBT/vKD7bJwF3D/cnnL5/Is1N+UssrFwj62uuH6yZXg==}
 
   proxy-addr@2.0.7:
     resolution: {integrity: sha512-llQsMLSUDUPT44jdrU/O37qlnifitDP+ZwrmmZcoSKyLKvtZxpyV0n2/bD/N4tBAAZ/gJEdZU7KMraoK1+XYAg==}
@@ -1052,6 +1058,8 @@ snapshots:
   picocolors@1.1.1: {}
 
   picomatch@4.0.4: {}
+
+  pinecone-router@7.5.0: {}
 
   proxy-addr@2.0.7:
     dependencies:

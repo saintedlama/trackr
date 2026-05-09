@@ -21,5 +21,7 @@ export function createApp(rawSecret) {
   app.use(createAdminRouter({ requireAdmin }));
   app.use(createTrackerRouter({ requireAuth }));
 
+  app.use((req, res) => res.sendFile(join(__dirname, 'public', 'index.html')));
+
   return app;
 }

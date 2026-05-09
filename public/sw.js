@@ -1,9 +1,14 @@
-const CACHE = 'trackr-shell-v1';
+const CACHE = 'trackr-shell-v3';
 
 const SHELL = [
   '/',
   '/style.css',
   '/alpinejs.min.js',
+  '/pinecone-router.min.js',
+  '/js/auth.js',
+  '/js/home.js',
+  '/js/tracker.js',
+  '/js/admin.js',
   '/fonts/inter-latin-wght-normal.woff2',
   '/fonts/inter-latin-wght-italic.woff2',
   '/favicon.ico',

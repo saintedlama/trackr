@@ -10,3 +10,4 @@ mkdirSync(resolve(pub, 'fonts'), { recursive: true });
 copyFileSync(resolve(nm, '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2'), resolve(pub, 'fonts/inter-latin-wght-normal.woff2'));
 copyFileSync(resolve(nm, '@fontsource-variable/inter/files/inter-latin-wght-italic.woff2'), resolve(pub, 'fonts/inter-latin-wght-italic.woff2'));
 copyFileSync(resolve(nm, 'alpinejs/dist/cdn.min.js'), resolve(pub, 'alpinejs.min.js'));
+copyFileSync(resolve(nm, 'pinecone-router/dist/router.min.js'), resolve(pub, 'pinecone-router.min.js'));
