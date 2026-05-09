@@ -37,9 +37,9 @@ document.addEventListener('alpine:init', () => {
     },
 
     trackerRowClass(tracker) {
-      if (tracker.countGoal && tracker.goal === 'increase' && tracker.todayCount >= tracker.countGoal)
+      if (tracker.countGoal && tracker.goal === 'increase' && tracker.periodCount >= tracker.countGoal)
         return 'bg-green-50 hover:bg-green-100';
-      if (tracker.countGoal && tracker.goal === 'decrease' && tracker.todayCount > tracker.countGoal)
+      if (tracker.countGoal && tracker.goal === 'decrease' && tracker.periodCount > tracker.countGoal)
         return 'bg-red-50 hover:bg-red-100';
       return 'hover:bg-cream-dk';
     },

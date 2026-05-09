@@ -168,6 +168,17 @@ document.addEventListener('alpine:init', () => {
       this.computeStats();
     },
 
+    async toggleGoalPeriod() {
+      const periods = ['daily', 'weekly', 'monthly', 'yearly'];
+      const goalPeriod = periods[(periods.indexOf(this.currentTracker.goalPeriod) + 1) % periods.length];
+      await fetch(`/api/trackers/${this.currentTracker.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goalPeriod }),
+      });
+      this.currentTracker = { ...this.currentTracker, goalPeriod };
+    },
+
     async track() {
       this.tracking = true;
       try {

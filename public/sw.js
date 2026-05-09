@@ -1,4 +1,4 @@
-const CACHE = 'trackr-shell-v3';
+const CACHE = 'trackr-shell-v4';
 
 const SHELL = [
   '/',

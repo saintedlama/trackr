@@ -12,20 +12,20 @@ test('GET /api/trackers returns an array', async () => {
   assert.ok(Array.isArray(body));
 });
 
-test('GET /api/trackers includes todayCount of 0 for new tracker', async () => {
+test('GET /api/trackers includes periodCount of 0 for new tracker', async () => {
   const tracker = await createTracker();
   const { body } = await req('/api/trackers');
   const found = body.find(t => t.id === tracker.id);
-  assert.equal(found.todayCount, 0);
+  assert.equal(found.periodCount, 0);
 });
 
-test('GET /api/trackers todayCount increments with each event', async () => {
+test('GET /api/trackers periodCount increments with each event', async () => {
   const tracker = await createTracker();
   await post(`/api/trackers/${tracker.id}/events`);
   await post(`/api/trackers/${tracker.id}/events`);
   const { body } = await req('/api/trackers');
   const found = body.find(t => t.id === tracker.id);
-  assert.equal(found.todayCount, 2);
+  assert.equal(found.periodCount, 2);
 });
 
 test('POST /api/trackers creates a tracker and returns 201', async () => {
@@ -206,6 +206,85 @@ test('GET /api/trackers includes countGoal', async () => {
   const { body } = await req('/api/trackers');
   const found = body.find(t => t.id === tracker.id);
   assert.equal(found.countGoal, 7);
+});
+
+test('POST /api/trackers defaults goalPeriod to daily', async () => {
+  const { body } = await post('/api/trackers', { name: 'Period Default' });
+  assert.equal(body.goalPeriod, 'daily');
+  const { body: fetched } = await req(`/api/trackers/${body.id}`);
+  assert.equal(fetched.goalPeriod, 'daily');
+});
+
+test('PATCH /api/trackers/:id sets goalPeriod to weekly', async () => {
+  const tracker = await createTracker();
+  const { status, body } = await patch(`/api/trackers/${tracker.id}`, { goalPeriod: 'weekly' });
+  assert.equal(status, 200);
+  assert.equal(body.goalPeriod, 'weekly');
+  const { body: fetched } = await req(`/api/trackers/${tracker.id}`);
+  assert.equal(fetched.goalPeriod, 'weekly');
+});
+
+test('PATCH /api/trackers/:id sets goalPeriod back to daily', async () => {
+  const tracker = await createTracker();
+  await patch(`/api/trackers/${tracker.id}`, { goalPeriod: 'weekly' });
+  const { status, body } = await patch(`/api/trackers/${tracker.id}`, { goalPeriod: 'daily' });
+  assert.equal(status, 200);
+  assert.equal(body.goalPeriod, 'daily');
+});
+
+test('PATCH /api/trackers/:id with invalid goalPeriod returns 400', async () => {
+  const tracker = await createTracker();
+  const { status, body } = await patch(`/api/trackers/${tracker.id}`, { goalPeriod: 'hourly' });
+  assert.equal(status, 400);
+  assert.equal(body.error, 'invalid goalPeriod');
+});
+
+test('PATCH /api/trackers/:id sets goalPeriod to monthly', async () => {
+  const tracker = await createTracker();
+  const { status, body } = await patch(`/api/trackers/${tracker.id}`, { goalPeriod: 'monthly' });
+  assert.equal(status, 200);
+  assert.equal(body.goalPeriod, 'monthly');
+  const { body: fetched } = await req(`/api/trackers/${tracker.id}`);
+  assert.equal(fetched.goalPeriod, 'monthly');
+});
+
+test('PATCH /api/trackers/:id sets goalPeriod to yearly', async () => {
+  const tracker = await createTracker();
+  const { status, body } = await patch(`/api/trackers/${tracker.id}`, { goalPeriod: 'yearly' });
+  assert.equal(status, 200);
+  assert.equal(body.goalPeriod, 'yearly');
+  const { body: fetched } = await req(`/api/trackers/${tracker.id}`);
+  assert.equal(fetched.goalPeriod, 'yearly');
+});
+
+test('GET /api/trackers monthly periodCount counts events in current month', async () => {
+  const tracker = await createTracker();
+  await patch(`/api/trackers/${tracker.id}`, { goalPeriod: 'monthly' });
+  await post(`/api/trackers/${tracker.id}/events`);
+  await post(`/api/trackers/${tracker.id}/events`);
+  const { body } = await req('/api/trackers');
+  const found = body.find(t => t.id === tracker.id);
+  assert.equal(found.periodCount, 2);
+});
+
+test('GET /api/trackers yearly periodCount counts events in current year', async () => {
+  const tracker = await createTracker();
+  await patch(`/api/trackers/${tracker.id}`, { goalPeriod: 'yearly' });
+  await post(`/api/trackers/${tracker.id}/events`);
+  await post(`/api/trackers/${tracker.id}/events`);
+  const { body } = await req('/api/trackers');
+  const found = body.find(t => t.id === tracker.id);
+  assert.equal(found.periodCount, 2);
+});
+
+test('GET /api/trackers weekly periodCount counts events in current week', async () => {
+  const tracker = await createTracker();
+  await patch(`/api/trackers/${tracker.id}`, { goalPeriod: 'weekly' });
+  await post(`/api/trackers/${tracker.id}/events`);
+  await post(`/api/trackers/${tracker.id}/events`);
+  const { body } = await req('/api/trackers');
+  const found = body.find(t => t.id === tracker.id);
+  assert.equal(found.periodCount, 2);
 });
 
 // ─── events ───────────────────────────────────────────────────────────────────

@@ -2,9 +2,15 @@ import { Router } from 'express';
 import { trackers as db } from './store.js';
 const {
   getTrackers, getTracker, createTracker, renameTracker,
-  setTrackerGoal, setTrackerCountGoal, deleteTracker,
+  setTrackerGoal, setTrackerCountGoal, setTrackerGoalPeriod, deleteTracker,
   getEvents, createEvent, deleteEvent, setEventReason, getReasons,
 } = db;
+
+function weekStart(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() - (d.getDay() + 6) % 7);
+  return d.toLocaleDateString('en-CA');
+}
 
 export function createTrackerRouter({ requireAuth }) {
   const router = Router();
@@ -12,7 +18,7 @@ export function createTrackerRouter({ requireAuth }) {
 
   router.get('/api/trackers', (req, res) => {
     const date = req.query.date || new Date().toISOString().slice(0, 10);
-    res.json(getTrackers(req.user.userId, date));
+    res.json(getTrackers(req.user.userId, date, weekStart(date)));
   });
 
   router.post('/api/trackers', (req, res) => {
@@ -20,7 +26,7 @@ export function createTrackerRouter({ requireAuth }) {
     if (!name) return res.status(400).json({ error: 'name required' });
     if (name.length > 40) return res.status(400).json({ error: 'name too long' });
     const id = createTracker(name, req.user.userId);
-    res.status(201).json({ id, name, goal: 'increase', countGoal: null });
+    res.status(201).json({ id, name, goal: 'increase', countGoal: null, goalPeriod: 'daily' });
   });
 
   router.get('/api/trackers/:id', (req, res) => {
@@ -33,7 +39,7 @@ export function createTrackerRouter({ requireAuth }) {
     const tracker = getTracker(req.params.id, req.user.userId);
     if (!tracker) return res.status(404).json({ error: 'not found' });
 
-    let { name, goal, countGoal } = req.body || {};
+    let { name, goal, countGoal, goalPeriod } = req.body || {};
 
     if (name !== undefined) {
       name = name.trim();
@@ -60,7 +66,14 @@ export function createTrackerRouter({ requireAuth }) {
       countGoal = tracker.countGoal;
     }
 
-    res.json({ id: tracker.id, name, goal, countGoal });
+    if (goalPeriod !== undefined) {
+      if (!['daily', 'weekly', 'monthly', 'yearly'].includes(goalPeriod)) return res.status(400).json({ error: 'invalid goalPeriod' });
+      setTrackerGoalPeriod(tracker.id, goalPeriod);
+    } else {
+      goalPeriod = tracker.goalPeriod;
+    }
+
+    res.json({ id: tracker.id, name, goal, countGoal, goalPeriod });
   });
 
   router.delete('/api/trackers/:id', (req, res) => {

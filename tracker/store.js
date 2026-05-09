@@ -2,17 +2,27 @@ import { db } from '../db/index.js';
 
 const stmts = {
   getTrackers: db.prepare(`
-    SELECT t.id, t.name, t.goal, t.count_goal AS countGoal,
-      COALESCE((SELECT COUNT(*) FROM events WHERE list_id = t.id AND DATE(tracked_at) = ?), 0) AS todayCount
+    SELECT t.id, t.name, t.goal, t.count_goal AS countGoal, t.goal_period AS goalPeriod,
+      COALESCE((
+        SELECT COUNT(*) FROM events
+        WHERE list_id = t.id
+        AND (
+          (t.goal_period = 'daily'   AND DATE(tracked_at) = ?) OR
+          (t.goal_period = 'weekly'  AND DATE(tracked_at) >= ? AND DATE(tracked_at) <= ?) OR
+          (t.goal_period = 'monthly' AND strftime('%Y-%m', tracked_at) = strftime('%Y-%m', ?)) OR
+          (t.goal_period = 'yearly'  AND strftime('%Y', tracked_at) = strftime('%Y', ?))
+        )
+      ), 0) AS periodCount
     FROM trackers t
     WHERE t.user_id = ?
     ORDER BY t.name ASC
   `),
-  getTracker:     db.prepare('SELECT id, name, goal, count_goal AS countGoal FROM trackers WHERE id = ? AND user_id = ?'),
+  getTracker:     db.prepare('SELECT id, name, goal, count_goal AS countGoal, goal_period AS goalPeriod FROM trackers WHERE id = ? AND user_id = ?'),
   createTracker:  db.prepare('INSERT INTO trackers (name, user_id) VALUES (?, ?)'),
   renameTracker:  db.prepare('UPDATE trackers SET name = ? WHERE id = ?'),
   setGoal:        db.prepare('UPDATE trackers SET goal = ? WHERE id = ?'),
   setCountGoal:   db.prepare('UPDATE trackers SET count_goal = ? WHERE id = ?'),
+  setGoalPeriod:  db.prepare("UPDATE trackers SET goal_period = ? WHERE id = ?"),
   deleteTracker:  db.prepare('DELETE FROM trackers WHERE id = ?'),
 
   getEvents: db.prepare(`
@@ -34,8 +44,8 @@ const stmts = {
 };
 
 export const trackers = {
-  getTrackers(userId, date) {
-    return stmts.getTrackers.all(date, userId);
+  getTrackers(userId, date, weekStart) {
+    return stmts.getTrackers.all(date, weekStart, date, date, date, userId);
   },
   getTracker(id, userId) {
     return stmts.getTracker.get(id, userId) ?? null;
@@ -51,6 +61,9 @@ export const trackers = {
   },
   setTrackerCountGoal(id, countGoal) {
     stmts.setCountGoal.run(countGoal, id);
+  },
+  setTrackerGoalPeriod(id, goalPeriod) {
+    stmts.setGoalPeriod.run(goalPeriod, id);
   },
   deleteTracker(id) {
     stmts.deleteTracker.run(id);

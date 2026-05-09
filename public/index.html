@@ -75,7 +75,7 @@
               class="flex-1 text-left px-4 py-3.5 font-medium flex items-center gap-1.5"
             >
               <span x-text="tracker.name"></span>
-              <span x-show="tracker.todayCount > 0" x-text="tracker.todayCount" class="text-xs font-semibold text-brand bg-brand/10 px-1.5 py-0.5 rounded-full tabular-nums"></span>
+              <span x-show="tracker.periodCount > 0" x-text="tracker.periodCount" class="text-xs font-semibold text-brand bg-brand/10 px-1.5 py-0.5 rounded-full tabular-nums"></span>
               <span class="text-gray-300 group-hover:text-gray-400 transition-colors text-sm">→</span>
             </button>
             <div class="pr-3 pl-1 flex items-center gap-2 shrink-0">
@@ -157,9 +157,13 @@
             </button>
           </div>
         </div>
-        <!-- Daily goal setting -->
+        <!-- Goal period + count -->
         <div x-show="!renaming && !confirmDelete" class="flex items-center gap-1.5 mt-1">
-          <span class="text-xs text-gray-400">Daily goal</span>
+          <button
+            @click="toggleGoalPeriod()"
+            class="text-xs text-gray-400 hover:text-brand transition-colors"
+            x-text="({ daily: 'Daily goal', weekly: 'Weekly goal', monthly: 'Monthly goal', yearly: 'Yearly goal' })[currentTracker?.goalPeriod] ?? 'Daily goal'"
+          ></button>
           <input
             type="number"
             min="1"

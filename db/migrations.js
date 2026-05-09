@@ -27,6 +27,10 @@ const migrations = [
     name: '005_add_user_id_to_trackers',
     run: (db) => db.exec('ALTER TABLE trackers ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE'),
   },
+  {
+    name: '006_add_goal_period_to_trackers',
+    run: (db) => db.exec("ALTER TABLE trackers ADD COLUMN goal_period TEXT NOT NULL DEFAULT 'daily'"),
+  },
 ];
 
 export function runMigrations(db) {
