@@ -41,10 +41,10 @@
       <form @submit.prevent="setup()" class="space-y-3">
         <input x-model="setupUsername" type="text" placeholder="Username" autocomplete="username"
           class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent">
-        <input x-model="setupPassword" type="password" placeholder="Password (min 8 characters)" autocomplete="new-password"
+        <input x-model="setupPassword" type="password" placeholder="Password" autocomplete="new-password"
           class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent">
         <p x-show="setupError" x-text="setupError" class="text-xs text-red-500"></p>
-        <button type="submit" :disabled="!setupUsername.trim() || setupPassword.length < 8"
+        <button type="submit" :disabled="!setupUsername.trim() || !setupPassword"
           class="w-full py-2.5 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dk disabled:opacity-40 transition-colors">
           Create admin account
         </button>
@@ -82,17 +82,17 @@
     <div class="bg-white rounded-xl border border-gray-200 p-4 mb-4">
       <p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Add user</p>
       <form @submit.prevent="addUser()" class="space-y-2">
-        <div class="flex gap-2">
-          <input x-model="newUserUsername" type="text" placeholder="Username"
-            class="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent">
-          <input x-model="newUserPassword" type="password" placeholder="Password (min 8)"
-            class="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent">
-          <button type="submit" :disabled="!newUserUsername.trim() || newUserPassword.length < 8"
-            class="px-4 py-2 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dk disabled:opacity-40 transition-colors shrink-0">
-            Add
+        <input x-model="newUserUsername" type="text" placeholder="Username" autocomplete="off"
+          class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent">
+        <input x-model="newUserPassword" type="password" placeholder="Password" autocomplete="new-password"
+          class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent">
+        <div class="flex items-center justify-between pt-1">
+          <p x-show="newUserError" x-text="newUserError" class="text-xs text-red-500"></p>
+          <button type="submit" :disabled="!newUserUsername.trim() || !newUserPassword"
+            class="ml-auto px-4 py-2 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dk disabled:opacity-40 transition-colors">
+            Add user
           </button>
         </div>
-        <p x-show="newUserError" x-text="newUserError" class="text-xs text-red-500"></p>
       </form>
     </div>
 
@@ -100,30 +100,33 @@
     <div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
       <template x-for="user in adminUsers" :key="user.id">
         <div class="px-4 py-3">
-          <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center justify-between gap-3 min-w-0">
             <div class="flex items-center gap-2 min-w-0">
               <span class="font-medium text-sm truncate" x-text="user.username"></span>
-              <span class="text-xs px-1.5 py-0.5 rounded font-medium"
+              <span class="text-xs px-1.5 py-0.5 rounded-md font-medium shrink-0"
                 :class="user.role === 'admin' ? 'bg-brand/10 text-brand' : 'bg-gray-100 text-gray-500'"
                 x-text="user.role"></span>
-              <span x-show="user.id === currentUser?.id" class="text-xs text-gray-300">(you)</span>
+              <span x-show="user.id === currentUser?.id" class="text-xs text-gray-300 shrink-0">(you)</span>
             </div>
             <div x-show="user.id !== currentUser?.id" class="flex items-center gap-1 shrink-0">
-              <button @click="toggleRole(user)" class="px-2 py-1 text-xs text-gray-500 hover:text-brand hover:bg-gray-100 rounded-lg transition-colors"
+              <button @click="toggleRole(user)"
+                class="px-2.5 py-1 text-xs text-gray-500 hover:text-brand hover:bg-gray-100 rounded-lg transition-colors"
                 x-text="user.role === 'admin' ? 'Make user' : 'Make admin'"></button>
               <button @click="resetPasswordUserId === user.id ? resetPasswordUserId = null : (resetPasswordUserId = user.id, resetPasswordValue = '')"
-                class="px-2 py-1 text-xs text-gray-500 hover:text-brand hover:bg-gray-100 rounded-lg transition-colors">Reset PW</button>
-              <button @click="removeUser(user.id)" class="px-2 py-1 text-xs text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">Delete</button>
+                class="px-2.5 py-1 text-xs text-gray-500 hover:text-brand hover:bg-gray-100 rounded-lg transition-colors">Reset PW</button>
+              <button @click="removeUser(user.id)"
+                class="px-2.5 py-1 text-xs text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">Delete</button>
             </div>
           </div>
           <!-- Inline password reset form -->
           <div x-show="resetPasswordUserId === user.id" class="mt-2 flex gap-2">
-            <input type="password" x-model="resetPasswordValue" placeholder="New password (min 8)"
+            <input type="password" x-model="resetPasswordValue" placeholder="New password"
               @keydown.escape="resetPasswordUserId = null"
-              class="flex-1 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand">
-            <button @click="resetPassword(user.id)" :disabled="resetPasswordValue.length < 8"
+              class="flex-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand">
+            <button @click="resetPassword(user.id)" :disabled="!resetPasswordValue"
               class="px-3 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand-dk disabled:opacity-40 transition-colors">Set</button>
-            <button @click="resetPasswordUserId = null" class="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors">Cancel</button>
+            <button @click="resetPasswordUserId = null"
+              class="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors">Cancel</button>
           </div>
         </div>
       </template>
@@ -169,11 +172,7 @@
               x-transition:leave-end="opacity-0"
               class="text-xs text-brand"
             >Tracked!</span>
-            <span x-show="pendingReasonTrackerId === tracker.id" class="flex items-center gap-1 text-xs text-gray-400">
-              <button @click.stop="openTrackerForReason(tracker.id, pendingReasonEventId)" class="hover:text-brand transition-colors">reason?</button>
-              <button @click.stop="pendingReasonTrackerId = null" class="hover:text-gray-600 transition-colors leading-none">×</button>
-            </span>
-            <button
+<button
               @click.stop="quickTrack(tracker.id)"
               class="px-3 py-1.5 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand-dk active:scale-95 transition-all"
             >Track</button>
@@ -506,8 +505,6 @@
         historicReasons: [],
         editingReasonId: null,
         editingReasonValue: '',
-        pendingReasonTrackerId: null,
-        pendingReasonEventId: null,
 
         // Auth
         authState: 'loading',
@@ -622,7 +619,7 @@
         },
 
         async resetPassword(userId) {
-          if (this.resetPasswordValue.length < 8) return;
+          if (!this.resetPasswordValue) return;
           await fetch(`/api/admin/users/${userId}/password`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -633,7 +630,8 @@
         },
 
         async loadTrackers() {
-          const res = await fetch('/api/trackers');
+          const date = new Date().toLocaleDateString('en-CA');
+          const res = await fetch(`/api/trackers?date=${date}`);
           this.trackers = await res.json();
         },
 
@@ -664,13 +662,6 @@
           this.page = 'tracker';
         },
 
-        async openTrackerForReason(trackerId, eventId) {
-          this.pendingReasonTrackerId = null;
-          await this.openTracker(trackerId);
-          this.lastTrackedEventId = eventId;
-          this.reasonValue = '';
-        },
-
         startRename() {
           this.confirmDelete = false;
           this.renameValue = this.currentTracker.name;
@@ -697,8 +688,27 @@
 
         async loadEvents() {
           const res = await fetch(`/api/trackers/${this.currentTracker.id}/events`);
-          this.events = await res.json();
+          this.events = this.groupEventsByLocalDay(await res.json());
           this.computeStats();
+        },
+
+        groupEventsByLocalDay(events) {
+          const map = new Map();
+          for (const { id, trackedAt, reason } of events) {
+            const d = new Date(trackedAt);
+            const day = d.toLocaleDateString('en-CA');
+            if (!map.has(day)) map.set(day, []);
+            const hh = d.getHours(), mm = d.getMinutes(), ss = d.getSeconds();
+            map.get(day).push({
+              id,
+              time: `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`,
+              hour: hh,
+              reason,
+            });
+          }
+          return Array.from(map.entries())
+            .sort((a, b) => b[0].localeCompare(a[0]))
+            .map(([day, times]) => ({ day, count: times.length, times }));
         },
 
         async loadHistoricReasons() {
@@ -731,8 +741,9 @@
           this.streak = (() => {
             if (!this.events.length) return 0;
             const days = this.events.map(e => e.day);
-            const today = new Date().toISOString().slice(0, 10);
-            const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+            const today = new Date().toLocaleDateString('en-CA');
+            const yd = new Date(); yd.setDate(yd.getDate() - 1);
+            const yesterday = yd.toLocaleDateString('en-CA');
             if (days[0] !== today && days[0] !== yesterday) return 0;
             let count = 0;
             let expected = days[0];
@@ -749,9 +760,8 @@
           const reasonMap = {};
           const hourMap = {};
           for (const group of this.events) {
-            for (const { time, reason } of group.times) {
-              const h = parseInt(time.slice(0, 2));
-              hourMap[h] = (hourMap[h] || 0) + 1;
+            for (const { hour, reason } of group.times) {
+              hourMap[hour] = (hourMap[hour] || 0) + 1;
               if (reason) reasonMap[reason] = (reasonMap[reason] || 0) + 1;
             }
           }
@@ -789,11 +799,8 @@
         },
 
         async quickTrack(trackerId) {
-          const res = await fetch(`/api/trackers/${trackerId}/events`, { method: 'POST' });
-          const { id: eventId } = await res.json();
+          await fetch(`/api/trackers/${trackerId}/events`, { method: 'POST' });
           this.flashedTrackerId = trackerId;
-          this.pendingReasonTrackerId = trackerId;
-          this.pendingReasonEventId = eventId;
           await this.loadTrackers();
           setTimeout(() => { this.flashedTrackerId = null; }, 1200);
         },
@@ -852,7 +859,7 @@
           const older = group.times.slice(0, -3);
           const map = {};
           for (const t of older) {
-            const h = t.time.slice(0, 2);
+            const h = String(t.hour).padStart(2, '0');
             (map[h] ??= []).push(t);
           }
           return Object.entries(map).map(([hour, times]) => ({ hour, times }));
@@ -867,8 +874,9 @@
         },
 
         formatDay(day) {
-          const today = new Date().toISOString().slice(0, 10);
-          const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+          const today = new Date().toLocaleDateString('en-CA');
+          const yd = new Date(); yd.setDate(yd.getDate() - 1);
+          const yesterday = yd.toLocaleDateString('en-CA');
           if (day === today) return 'Today';
           if (day === yesterday) return 'Yesterday';
           return new Date(day + 'T12:00:00').toLocaleDateString(undefined, {

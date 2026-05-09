@@ -5,13 +5,13 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch --watch-path=public server.js",
-    "test": "node --env-file=.env.test --test routes/trackers.test.js routes/events.test.js"
+    "test": "node --env-file=.env.test --test tracker/router.test.js auth/router.test.js account/router.test.js"
   },
   "engines": {
     "node": ">=22.5.0"
   },
   "dependencies": {
     "express": "^5.0.0",
-    "express-session": "^1.19.0"
+    "jose": "^6.2.3"
   }
 }

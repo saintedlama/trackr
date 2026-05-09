@@ -1,36 +1,25 @@
 import express from 'express';
-import session from 'express-session';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { db } from './db.js';
-import { SqliteStore } from './session-store.js';
-import authRoutes from './routes/auth.js';
-import adminRoutes from './routes/admin.js';
-import trackerRoutes from './routes/trackers.js';
-import eventRoutes from './routes/events.js';
+import { createJwt } from './auth/jwt.js';
+import { createAuthMiddleware } from './auth/middleware.js';
+import { createAuthRouter } from './auth/router.js';
+import { createAdminRouter } from './account/router.js';
+import { createTrackerRouter } from './tracker/router.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const app = express();
 
-app.use(express.static(join(__dirname, 'public')));
-app.use(express.json());
+export function createApp(rawSecret) {
+  const jwt = createJwt(rawSecret);
+  const { requireAuth, requireAdmin } = createAuthMiddleware(jwt);
 
-app.use(session({
-  store: new SqliteStore(db),
-  secret: process.env.SESSION_SECRET || 'trackr-dev-secret-change-in-production',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    sameSite: 'strict',
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  },
-}));
+  const app = express();
+  app.use(express.static(join(__dirname, 'public')));
+  app.use(express.json());
 
-app.use(authRoutes);
-app.use(adminRoutes);
-app.use(trackerRoutes);
-app.use(eventRoutes);
+  app.use(createAuthRouter(jwt));
+  app.use(createAdminRouter({ requireAdmin }));
+  app.use(createTrackerRouter({ requireAuth }));
 
-export default app;
+  return app;
+}
