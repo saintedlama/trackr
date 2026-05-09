@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.0](https://github.com/saintedlama/trackr/compare/v1.1.0...v1.2.0) (2026-05-09)
+
+
+### Features
+
+* add minimal PWA support ([ba03e4c](https://github.com/saintedlama/trackr/commit/ba03e4cc81a8eea78d476311e100063d510a3086))
+* allow to define daily/weekly/monthly/yearly goals ([0cdc813](https://github.com/saintedlama/trackr/commit/0cdc813096880287109055b243ca2b7437597fa4))
+* use routing for cleaner navigation ([1071fef](https://github.com/saintedlama/trackr/commit/1071fef2c1783b8e24f3346fd77daf767357f73b))
+
 ## [1.1.0](https://github.com/saintedlama/trackr/compare/v1.0.2...v1.1.0) (2026-05-09)
 
 
