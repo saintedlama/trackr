@@ -20,5 +20,9 @@
     "@fontsource-variable/inter": "^5.2.8",
     "@tailwindcss/cli": "^4.3.0",
     "alpinejs": "^3.15.12"
-  }
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@parcel/watcher"]
+  },
+  "packageManager": "pnpm@11.0.9+sha512.34ce82e6780233cf9cad8685029a8f81d2e06196c5a9bad98879f7424940c6817c4e4524fb7d38b8553ceed48b9758b8ebaf1abd3600c232c4c8cf7366086f38"
 }
